@@ -1,0 +1,46 @@
+# ---------- 依赖 ----------
+node_modules/
+.pnpm-store/
+
+# ---------- 构建产物 ----------
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ---------- 环境变量 / 密钥 ----------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---------- 日志 / 缓存 ----------
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.eslintcache
+.turbo/
+.cache/
+coverage/
+
+# ---------- 测试产物（提前预留，Phase 0 Step 4 会用到）----------
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ---------- IDE / 编辑器 ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Claude Code 本地设置（团队分享 settings.json，本地覆盖不入库）----------
+.claude/settings.local.json
