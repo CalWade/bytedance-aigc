@@ -27,6 +27,7 @@
     "prisma:generate": "pnpm --filter @bytedance-aigc/api exec prisma generate",
     "prisma:migrate": "pnpm --filter @bytedance-aigc/api exec prisma migrate dev",
     "prisma:studio": "pnpm --filter @bytedance-aigc/api exec prisma studio",
+    "prisma:seed": "pnpm --filter @bytedance-aigc/api exec prisma db seed",
     "prepare": "husky"
   },
   "pnpm": {

@@ -1,5 +1,6 @@
 // bytedance-aigc · apps/api · Prisma schema
 // Phase 1.1 初始数据建模:User / Draft / DraftVersion
+// Phase 1.2 追加 Prompt 库:owner 区分平台 / 私人,9 个 AI 工具枚举锁 DB 层
 // 演化路线见 docs/architecture.md §4.1
 
 generator client {
@@ -16,12 +17,30 @@ enum DraftMode {
   FINE
 }
 
+enum PromptOwner {
+  PLATFORM
+  PRIVATE
+}
+
+enum DraftToolType {
+  REWRITE_FLUENT
+  EXPAND
+  TRANSFORM_STYLE
+  HEADLINE_SUB
+  HEADLINE_NEW
+  REWRITE_OPENING
+  ADD_FACTS
+  ADD_TOPIC
+  IMAGE_SUGGEST
+}
+
 model User {
   id        String   @id @default(cuid())
   handle    String   @unique
   createdAt DateTime @default(now())
 
-  drafts Draft[]
+  drafts  Draft[]
+  prompts Prompt[] @relation("UserPrompts")
 
   @@map("users")
 }
@@ -53,4 +72,28 @@ model DraftVersion {
 
   @@index([draftId])
   @@map("draft_versions")
+}
+
+model Prompt {
+  id             String        @id @default(cuid())
+  owner          PromptOwner
+  authorId       String?
+  tool           DraftToolType
+  name           String
+  systemPrompt   String        @db.Text
+  params         Json
+  fewShots       Json
+  designNote     String?       @db.Text
+  isStarter      Boolean       @default(false)
+  sourcePromptId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  author       User?    @relation("UserPrompts", fields: [authorId], references: [id], onDelete: Cascade)
+  sourcePrompt Prompt?  @relation("PromptCopy", fields: [sourcePromptId], references: [id])
+  copies       Prompt[] @relation("PromptCopy")
+
+  @@index([owner, tool])
+  @@index([authorId])
+  @@map("prompts")
 }
