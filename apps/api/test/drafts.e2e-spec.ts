@@ -153,18 +153,22 @@ describe("DraftsController (e2e)", () => {
     const draft = created.body as DraftResponse;
 
     const otherHandle = `e2e-other-${Date.now()}`;
-    await prisma.user.create({ data: { handle: otherHandle } });
-    const loginRes = await request(app.getHttpServer())
-      .post("/auth/login")
-      .send({ handle: otherHandle })
-      .expect(200);
-    const otherToken = (loginRes.body as { accessToken: string }).accessToken;
+    const otherUser = await prisma.user.create({ data: { handle: otherHandle } });
+    try {
+      const loginRes = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send({ handle: otherHandle })
+        .expect(200);
+      const otherToken = (loginRes.body as { accessToken: string }).accessToken;
 
-    await request(app.getHttpServer())
-      .patch(`/drafts/${draft.id}`)
-      .set("Authorization", `Bearer ${otherToken}`)
-      .send({ title: "Hacked" })
-      .expect(403);
+      await request(app.getHttpServer())
+        .patch(`/drafts/${draft.id}`)
+        .set("Authorization", `Bearer ${otherToken}`)
+        .send({ title: "Hacked" })
+        .expect(403);
+    } finally {
+      await prisma.user.delete({ where: { id: otherUser.id } });
+    }
   });
 
   it("PATCH /drafts/:id -> 404 when draft id does not exist", async () => {
