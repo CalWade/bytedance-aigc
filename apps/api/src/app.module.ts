@@ -12,6 +12,7 @@ import { DraftsModule } from "./drafts/drafts.module";
 import { LlmModule } from "./llm/llm.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PromptsModule } from "./prompts/prompts.module";
+import { ReviewsModule } from "./reviews/reviews.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PromptsModule } from "./prompts/prompts.module";
     DraftsModule,
     PromptsModule,
     LlmModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [
