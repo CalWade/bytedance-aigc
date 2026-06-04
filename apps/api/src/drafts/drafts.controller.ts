@@ -102,4 +102,13 @@ export class DraftsController {
   ): Promise<{ candidates: Candidate[] }> {
     return this.tools.invoke(id, user.sub, dto);
   }
+
+  @Post(":id/publish")
+  @HttpCode(HttpStatus.OK)
+  publish(
+    @Param("id") id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ id: string; publishedAt: Date }> {
+    return this.drafts.publish(id, user.sub);
+  }
 }
