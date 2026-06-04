@@ -12,5 +12,6 @@ import { ToolsService } from "./tools.service";
   imports: [AuthModule, PromptsModule],
   controllers: [DraftsController],
   providers: [DraftsService, OutlineService, SectionsService, ToolsService],
+  exports: [DraftsService],
 })
 export class DraftsModule {}
