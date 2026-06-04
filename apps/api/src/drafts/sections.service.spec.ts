@@ -7,6 +7,10 @@ import { DraftsService } from "./drafts.service";
 import { SectionsService, type StreamMessageEvent } from "./sections.service";
 import type { SectionsStreamDto } from "./dto/sections-stream.dto";
 
+function emit(...vals: ChatStreamFrame[]): Observable<ChatStreamFrame> {
+  return of(...(vals as [ChatStreamFrame, ...ChatStreamFrame[]]));
+}
+
 function makeService(streamFactory: () => Observable<ChatStreamFrame>) {
   const drafts = { assertAuthor: jest.fn().mockResolvedValue({}) } as unknown as DraftsService;
   const llm = {
@@ -22,9 +26,7 @@ const DTO_ONE_SECTION: SectionsStreamDto = {
 
 describe("SectionsService", () => {
   it("happy path:每节 emit start → token×N → end,流末 done", async () => {
-    const { svc } = makeService(() =>
-      of<ChatStreamFrame>({ delta: "你好" }, { delta: ",世界" }, { done: true }),
-    );
+    const { svc } = makeService(() => emit({ delta: "你好" }, { delta: ",世界" }, { done: true }));
 
     const stream = await svc.stream("d1", "u1", DTO_ONE_SECTION);
     const frames = await lastValueFrom(stream.pipe(toArray()));
@@ -70,7 +72,7 @@ describe("SectionsService", () => {
   });
 
   it("cursor 控制起始 index", async () => {
-    const { svc } = makeService(() => of<ChatStreamFrame>({ delta: "x" }, { done: true }));
+    const { svc } = makeService(() => emit({ delta: "x" }, { done: true }));
 
     const dto: SectionsStreamDto = {
       sections: [

@@ -22,10 +22,13 @@ import { UserGuard } from "../auth/user.guard";
 import { DraftsService } from "./drafts.service";
 import { OutlineService } from "./outline.service";
 import { SectionsService, type StreamMessageEvent } from "./sections.service";
+import { ToolsService } from "./tools.service";
 import { CreateDraftDto } from "./dto/create-draft.dto";
 import { OutlineRequestDto } from "./dto/outline-request.dto";
 import { SectionsStreamDto } from "./dto/sections-stream.dto";
+import { ToolInvokeDto } from "./dto/tool-invoke.dto";
 import { UpdateDraftDto } from "./dto/update-draft.dto";
+import type { Candidate } from "@bytedance-aigc/shared";
 
 @Controller("drafts")
 @UseGuards(UserGuard)
@@ -34,6 +37,7 @@ export class DraftsController {
     private readonly drafts: DraftsService,
     private readonly outline: OutlineService,
     private readonly sections: SectionsService,
+    private readonly tools: ToolsService,
   ) {}
 
   @Post()
@@ -87,5 +91,15 @@ export class DraftsController {
     @Body() dto: SectionsStreamDto,
   ): Promise<Observable<StreamMessageEvent>> {
     return this.sections.stream(id, user.sub, dto);
+  }
+
+  @Post(":id/tools/invoke")
+  @HttpCode(HttpStatus.OK)
+  invokeTool(
+    @Param("id") id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ToolInvokeDto,
+  ): Promise<{ candidates: Candidate[] }> {
+    return this.tools.invoke(id, user.sub, dto);
   }
 }
