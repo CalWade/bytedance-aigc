@@ -43,6 +43,7 @@ function makeConfigService(): ConfigService {
 /** 把数组包成 OpenAI SDK 的 ChatCompletionStream(只用到 [Symbol.asyncIterator]) */
 function makeStream(chunks: unknown[]) {
   return {
+    // eslint-disable-next-line @typescript-eslint/require-await
     async *[Symbol.asyncIterator]() {
       for (const c of chunks) yield c;
     },

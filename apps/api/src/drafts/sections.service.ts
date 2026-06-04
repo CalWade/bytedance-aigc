@@ -52,7 +52,7 @@ export class SectionsService {
         if (!cancelled) subscriber.next({ data: frame });
       };
 
-      (async () => {
+      void (async () => {
         try {
           for (let i = startIdx; i < dto.sections.length; i++) {
             if (cancelled) return;
@@ -93,7 +93,8 @@ export class SectionsService {
                     resolve();
                   }
                 },
-                error: (err) => reject(err),
+                error: (err: unknown) =>
+                  reject(err instanceof Error ? err : new Error(String(err))),
                 complete: () => resolve(),
               });
             });

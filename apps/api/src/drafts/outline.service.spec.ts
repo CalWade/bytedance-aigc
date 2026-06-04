@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { BadGatewayException, ForbiddenException } from "@nestjs/common";
 
 import { LlmClient } from "../llm/llm.client";

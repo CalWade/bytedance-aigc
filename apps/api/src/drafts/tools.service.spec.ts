@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import type { Prompt } from "@prisma/client";
 
@@ -37,10 +38,14 @@ function makeService(opts?: {
   } as unknown as LlmClient;
   const prompts = {
     findDefaultByTool: jest.fn().mockResolvedValue(opts?.defaultPrompt ?? fakePrompt()),
-    findOneOwnedOrPlatformForTool: jest.fn().mockImplementation(() => {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    findOneOwnedOrPlatformForTool: jest.fn().mockImplementation(async () => {
       const v = opts?.ownedPrompt;
-      if (typeof v === "function") return Promise.reject((v as () => never)());
-      return Promise.resolve(v ?? fakePrompt());
+      if (typeof v === "function") {
+        // v 必 throw(类型 () => never);await 一个已 reject 的 promise 把它转成可 catch
+        v();
+      }
+      return v ?? fakePrompt();
     }),
   } as unknown as PromptsService;
   const svc = new ToolsService(drafts, llm, prompts);

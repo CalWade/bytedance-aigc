@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DraftToolType, Prompt } from "@prisma/client";
+import { DraftToolType, Prisma, Prompt } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { ListPromptsQueryDto } from "./dto/list-prompts-query.dto";
@@ -117,8 +117,10 @@ export class PromptsService {
       where: { id },
       data: {
         ...(dto.systemPrompt !== undefined ? { systemPrompt: dto.systemPrompt } : {}),
-        ...(dto.params !== undefined ? { params: dto.params as object } : {}),
-        ...(dto.fewShots !== undefined ? { fewShots: dto.fewShots as object } : {}),
+        ...(dto.params !== undefined ? { params: dto.params as Prisma.InputJsonValue } : {}),
+        ...(dto.fewShots !== undefined
+          ? { fewShots: dto.fewShots as unknown as Prisma.InputJsonValue }
+          : {}),
         ...(dto.designNote !== undefined ? { designNote: dto.designNote } : {}),
       },
     });

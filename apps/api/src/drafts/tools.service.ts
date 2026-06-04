@@ -150,7 +150,7 @@ function parseImageCandidates(raw: string): Candidate[] {
     // 容错:LLM 偶发输出 `1. xxx\n2. xxx` 自然语言,降级把每行当 alt
     return raw
       .split("\n")
-      .map((l) => l.replace(/^\s*\d+[\.\)、]\s*/, "").trim())
+      .map((l) => l.replace(/^\s*\d+[.)、]\s*/, "").trim())
       .filter((l) => l.length > 0)
       .slice(0, 4)
       .map((alt): Candidate => ({ kind: "image", alt, reason: "LLM 自然语言降级解析" }));

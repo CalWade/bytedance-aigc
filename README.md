@@ -94,6 +94,35 @@ pnpm --filter @bytedance-aigc/api test:e2e
 - SSR 配方：TipTap `useEditor({ immediatelyRender: false })` 避免 Next.js hydration mismatch
 - 端点：`PATCH /drafts/:id`（UserGuard + service 层作者校验，非作者 403，不存在 404）
 
+### FAST 模式 + 9 AI 工具卡 + Prompt 自定义
+
+Phase 2.2 接入：
+
+- **FAST 模式**：选题 → 大纲 → 流式正文。两段 POST 接力 `POST /drafts/:id/outline`(同步返大纲)+ `POST /drafts/:id/sections/stream`(SSE,frame: `section.start` / `token` / `section.end` / `done` / `error`)。流式期间 `useAutosave` 暂停防抖,流前 / 流末各一次 `flush()` 落库。
+- **9 个工具卡**:`POST /drafts/:id/tools/invoke`,DTO union narrow 9 种(改写 4 + 标题 2 + 扩展 3)。返候选数组(`text` / `image` 二选一),前端三态卡(采用 / 修改 / 关闭)。
+- **两层 Prompt**:平台 starter 9 条只读(`prisma:seed`)+ 私人复制层。`/prompts` Public 列表,`/prompts/private` UserGuard 复制 / 编辑 / 删除。`promptId` 不传时后端自动用 `isStarter:true` 默认款。
+
+## LLM 接入
+
+后端通过 OpenAI SDK + 自定义 `baseURL` 接入,任意 OpenAI 兼容端点都可用。本地 `.env` **必须**填以下三项,否则 api 拒启动:
+
+```
+LLM_BASE_URL=<OpenAI 兼容 endpoint>
+LLM_API_KEY=<密钥>
+LLM_MODEL=<模型/endpoint 标识>
+```
+
+典型厂商填法:
+
+| 厂商         | LLM_BASE_URL                                                  | LLM_MODEL 示例                   |
+| ------------ | ------------------------------------------------------------- | -------------------------------- |
+| OpenAI 官方  | `https://api.openai.com/v1`                                   | `gpt-4o-mini`                    |
+| 火山方舟 ARK | `https://ark.cn-beijing.volces.com/api/v3`                    | `ep-20260101-xxxxx`(endpoint id) |
+| DeepSeek     | `https://api.deepseek.com/v1`                                 | `deepseek-chat`                  |
+| 自建/中转    | 形如 `https://<host>/v1`,需 OpenAI 兼容 chat completions 协议 | 视网关而定                       |
+
+切换厂商只改 `.env` 三项 + 重启 api,代码不绑定厂商。
+
 ## 交付物清单
 
 - [x] PRD 终稿

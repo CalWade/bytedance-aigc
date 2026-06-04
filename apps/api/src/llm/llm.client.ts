@@ -63,7 +63,7 @@ export class LlmClient {
     return new Observable<ChatStreamFrame>((subscriber) => {
       let cancelled = false;
 
-      (async () => {
+      void (async () => {
         try {
           const stream = await this.client.chat.completions.create({
             model: this.model,

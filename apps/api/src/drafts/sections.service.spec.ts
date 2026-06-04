@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { ForbiddenException } from "@nestjs/common";
-import { firstValueFrom, lastValueFrom, Observable, of, throwError, toArray } from "rxjs";
+import { lastValueFrom, Observable, of, throwError, toArray } from "rxjs";
 
 import { LlmClient } from "../llm/llm.client";
 import type { ChatStreamFrame } from "../llm/llm.client";
 import { DraftsService } from "./drafts.service";
-import { SectionsService, type StreamMessageEvent } from "./sections.service";
+import { SectionsService } from "./sections.service";
 import type { SectionsStreamDto } from "./dto/sections-stream.dto";
 
 function emit(...vals: ChatStreamFrame[]): Observable<ChatStreamFrame> {
@@ -91,4 +92,6 @@ describe("SectionsService", () => {
 });
 
 // 帮 TypeScript 推 StreamMessageEvent 字段(防止某些断言被弱推)
-type _ = StreamMessageEvent;
+// 通过 type-only 引用避免 unused-vars,同时保留意图说明。
+import type { StreamMessageEvent } from "./sections.service";
+export type _SmokeEnsureStreamMessageEvent = StreamMessageEvent;
