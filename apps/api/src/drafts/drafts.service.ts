@@ -41,7 +41,11 @@ export class DraftsService {
     return draft;
   }
 
-  async update(id: string, authorId: string, dto: UpdateDraftDto): Promise<Draft> {
+  /**
+   * 校验草稿存在且作者匹配,常被 update / outline / sections / tools 几路共用。
+   * Plan Task 4 抽出后置为 public(YAGNI:写 helper 类不如改两个字符)。
+   */
+  async assertAuthor(id: string, authorId: string): Promise<Draft> {
     const draft = await this.prisma.draft.findUnique({ where: { id } });
     if (!draft) {
       throw new NotFoundException(`Draft ${id} not found`);
@@ -49,6 +53,11 @@ export class DraftsService {
     if (draft.authorId !== authorId) {
       throw new ForbiddenException("Not the draft author");
     }
+    return draft;
+  }
+
+  async update(id: string, authorId: string, dto: UpdateDraftDto): Promise<Draft> {
+    await this.assertAuthor(id, authorId);
     const data: Prisma.DraftUpdateInput = {
       version: { increment: 1 },
     };
