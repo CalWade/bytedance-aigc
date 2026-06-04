@@ -80,6 +80,7 @@ model Draft {
   versions   DraftVersion[]
   lastReview Review?        @relation("DraftLastReview", fields: [lastReviewId], references: [id])
   reviews    Review[]       @relation("DraftReviews")
+  stat       PostStat?
 
   @@index([authorId])
   @@index([status])
@@ -137,4 +138,21 @@ model Review {
 
   @@index([draftId, createdAt(sort: Desc)])
   @@map("reviews")
+}
+
+model PostStat {
+  id         String   @id @default(cuid())
+  draftId    String   @unique
+  impression Int      @default(0)
+  click      Int      @default(0)
+  dwellUnit  Int      @default(0)
+  like       Int      @default(0)
+  collect    Int      @default(0)
+  share      Int      @default(0)
+  report     Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  draft Draft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@map("post_stats")
 }
