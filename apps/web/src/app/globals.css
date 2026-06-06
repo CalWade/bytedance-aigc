@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.review-violation {
+  text-decoration-style: wavy;
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.review-violation--low {
+  text-decoration-color: #a3a3a3;
+}
+.review-violation--medium {
+  text-decoration-color: #f59e0b;
+}
+.review-violation--high {
+  text-decoration-color: #dc2626;
+}
+.review-violation--section {
+  background-color: rgba(220, 38, 38, 0.06);
+  border-left: 3px solid #dc2626;
+  padding-left: 6px;
+}
