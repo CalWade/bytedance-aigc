@@ -149,6 +149,29 @@ PRD §5。已发布稿(复用 `Draft where status='PUBLISHED'`,**未引入 Post 
 - Fixtures:3 作者(demo/tech/life) × 10 PUBLISHED = 30 条,`publishedAt = now - i·6h - 30min`(前 2 落 12h 窗口,前 12 落 72h 窗口),5 张 WebP 封面在 `apps/web/public/covers/`。
 - 前端 SSR:`page.tsx`(信息流)/ `rank/hot` / `rank/best` / `post/[id]` 均 Server Component;`me/works` 客户端鉴权。`WeightDrawer` localStorage(`phase24:feed-weights`)+ `router.replace(?alpha&beta&gamma)` 热调权重。`LoadMore` 用 IntersectionObserver 触发 cursor 下一页。
 
+## Phase 2.5 — 三阶段内容审核 + 规则库 + 准确率验证
+
+PRD §4.1.1-4.1.3 三阶段审核全部接通:
+
+- **① Prompt 阶段**:`FastModeDialog` 中 topic / hint 失焦 800ms 防抖触发 `POST /reviews/prompt`,LLM 7 类目审核(politics / pornography / gambling / drugs / vulgarity / fraud / medical),命中 BLOCK / WARN 弹 `PromptReviewBanner`,作者可"换角度"或"有把握继续"。WHY 不落库:① 阶段触发频次高(每次失焦)且无 draftId 关联,reviewId 仅作日志追溯。
+- **② 输入阶段**:TipTap `update` 1.5s 防抖,`sensitive-scanner.worker.ts` Web Worker 内自写 Aho-Corasick 自动机扫描静态词库(`packages/shared/src/sensitive-words.json`),命中通过 `review-decorations` ProseMirror 插件渲染红/橙/灰波浪线,主线程零阻塞。
+- **③ 生成中阶段**:`SectionStream.onSectionEnd` fire-and-forget `POST /reviews/section`,命中 → 段落红框 + `SectionReviewCard`(重新生成 / 修改建议 / 仍要保留 — Phase 2.6 实现);`StreamSessionStore` 内存级记录同 sessionId 连续违规,≥ 3 段 high → `abortStream=true` 中断流式(沿用 `useStreamingGeneration.stop()` 的 AbortController)。
+
+#### 规则库 §4.4
+
+- 位置:[`packages/shared/rules/`](./packages/shared/rules/) 7 个 yaml(politics / pornography / gambling / drugs / vulgarity / fraud / medical)
+- schema:`rule_id` / `category` / `severity` / `description` / `prompt_hint` / `examples_positive` / `examples_negative`
+- `review.service` 启动时 `loadRules()` 加载并缓存,审核请求时 `buildPromptHints()` 拼接到 system message
+- 词库:[`packages/shared/src/sensitive-words.json`](./packages/shared/src/sensitive-words.json) 7 类目静态 JSON,Worker 启动一次性注入
+
+#### 准确率指标 §4.4.3
+
+- 标注集:[`apps/api/test/fixtures/safety-eval/`](./apps/api/test/fixtures/safety-eval/) 7 类目 + allow.jsonl,目标 ≥ 350 条(当前 40 条占位骨架,PE 分批补齐)
+- 数量校验:`pnpm --filter @bytedance-aigc/api exec ts-node scripts/eval-fixtures-count.ts`
+- 跑评估:`pnpm --filter @bytedance-aigc/api eval:safety`(消耗真 LLM 配额,fixtures 补齐后再跑)
+- 报告位置:[`docs/perf/safety-eval-YYYY-MM-DD.md`](./docs/perf/) 类目级 P/R/F1 + 总体 Accuracy
+- **目标 Accuracy ≥ 90%**(PRD §4.4.3 硬指标)
+
 ## 交付物清单
 
 - [x] PRD 终稿
