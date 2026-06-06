@@ -1,4 +1,4 @@
-import { loadRules, RULE_CATEGORIES } from "./rule-loader";
+import { buildPromptHints, loadRules, RULE_CATEGORIES } from "./rule-loader";
 
 describe("rule-loader", () => {
   it("加载 7 类目 yaml,每类至少 1 条规则", () => {
@@ -22,7 +22,6 @@ describe("rule-loader", () => {
   });
 
   it("buildPromptHints 拼装所有 active 规则的 prompt_hint,按 category 分组", () => {
-    const { buildPromptHints } = require("./rule-loader") as typeof import("./rule-loader");
     const hints = buildPromptHints();
     expect(hints).toContain("politics");
     expect(hints).toContain("pornography");

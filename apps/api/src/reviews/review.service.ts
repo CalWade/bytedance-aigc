@@ -104,7 +104,7 @@ export class ReviewService {
    * Phase 2.5 ① — 选题 + 提示词阶段审核
    * 同步:写 Review 行(stage=PROMPT_INPUT,quality 全 0)
    */
-  async reviewPrompt(text: string, _userSub: string): Promise<PromptReviewResponse> {
+  async reviewPrompt(text: string): Promise<PromptReviewResponse> {
     const trimmed = text.trim();
     if (trimmed.length === 0 || trimmed.length > 1000) {
       throw new InternalServerErrorException("text 必须非空且 ≤ 1000 字");

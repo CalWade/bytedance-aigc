@@ -179,7 +179,7 @@ describe("reviewPrompt (Phase 2.5 ①)", () => {
 
   it("ALLOW happy path:全 low → recommendation ALLOW + hitCategories 空", async () => {
     llm.chat.mockResolvedValueOnce(ALL_LOW_7CATS);
-    const res = await service.reviewPrompt("正常选题文本", DEMO_AUTHOR_ID);
+    const res = await service.reviewPrompt("正常选题文本");
     expect(res.recommendation).toBe("ALLOW");
     expect(res.hitCategories).toEqual([]);
     expect(res.reviewId).toEqual(expect.any(String));
@@ -187,15 +187,18 @@ describe("reviewPrompt (Phase 2.5 ①)", () => {
 
   it("politics high → recommendation BLOCK + hitCategories 包含 politics", async () => {
     llm.chat.mockResolvedValueOnce(POLITICS_HIGH_7CATS);
-    const res = await service.reviewPrompt("敏感选题", DEMO_AUTHOR_ID);
+    const res = await service.reviewPrompt("敏感选题");
     expect(res.recommendation).toBe("BLOCK");
     expect(res.hitCategories).toContain("politics");
   });
 
   it("system message 拼接规则库 prompt_hint(包含 politics/pornography 提示)", async () => {
     llm.chat.mockResolvedValueOnce(ALL_LOW_7CATS);
-    await service.reviewPrompt("xxx", DEMO_AUTHOR_ID);
-    const calledMessages = llm.chat.mock.calls[0][0] as Array<{ role: string; content: string }>;
+    await service.reviewPrompt("xxx");
+    const firstCall = llm.chat.mock.calls[0] as unknown as [
+      Array<{ role: string; content: string }>,
+    ];
+    const calledMessages = firstCall[0];
     const sys = calledMessages.find((m) => m.role === "system")?.content ?? "";
     expect(sys).toContain("politics");
     expect(sys).toContain("pornography");
