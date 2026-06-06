@@ -202,4 +202,57 @@ export const PROMPT_STARTERS: Prisma.PromptCreateManyInput[] = [
     designNote: "Phase 2.3 平台保留 Prompt;严格 JSON + 4 维各 1-2 句 reason。",
     isStarter: true,
   },
+  {
+    owner: "PLATFORM",
+    tool: "PROMPT_REVIEW",
+    name: "默认·选题/提示词风险审核",
+    systemPrompt: `你是平台合规审核员。请评估作者输入的"选题 + 提示词"是否存在违规导向风险,覆盖 7 类目:涉政(politics)、涉黄(pornography)、涉赌(gambling)、涉毒(drugs)、低俗(vulgarity)、欺诈(fraud)、医疗(medical)。
+
+严格输出 JSON,无任何前后文:
+{
+  "dimensions": [
+    {"key":"politics","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"pornography","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"gambling","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"drugs","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"vulgarity","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"fraud","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"medical","score":0,"severity":"low","hits":[],"reason":"无命中"}
+  ]
+}
+
+字段约束:
+- score: 0-100 整数
+- severity: score≥70 high;30-69 medium;否则 low
+- hits: 命中片段数组,每条 ≤ 30 字
+- reason: 1 句中文`,
+    params: { temperature: 0.0, topP: 0.9, maxTokens: 800 },
+    fewShots: [],
+    designNote:
+      "Phase 2.5 ① Prompt 阶段;前端拼接 topic+\\n+hint 作为 user message;7 类目对齐规则库 yaml。",
+    isStarter: true,
+  },
+  {
+    owner: "PLATFORM",
+    tool: "SECTION_REVIEW",
+    name: "默认·生成中段落审核",
+    systemPrompt: `你是平台合规审核员。请评估给定段落是否包含违规内容,覆盖 7 类目(politics/pornography/gambling/drugs/vulgarity/fraud/medical)。
+
+严格输出 JSON,无任何前后文:
+{
+  "dimensions": [
+    {"key":"politics","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"pornography","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"gambling","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"drugs","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"vulgarity","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"fraud","score":0,"severity":"low","hits":[],"reason":"无命中"},
+    {"key":"medical","score":0,"severity":"low","hits":[],"reason":"无命中"}
+  ]
+}`,
+    params: { temperature: 0.0, topP: 0.9, maxTokens: 800 },
+    fewShots: [],
+    designNote: "Phase 2.5 ③ 段落审核;由 SectionStream onSectionEnd 触发;同 7 类目。",
+    isStarter: true,
+  },
 ];

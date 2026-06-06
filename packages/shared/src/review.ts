@@ -59,7 +59,7 @@ export interface ReviewModelMeta {
 
 export interface ReviewDto {
   id: string;
-  stage: "PREFLIGHT" | "POST_PUBLISH";
+  stage: "PREFLIGHT" | "PROMPT_INPUT" | "SECTION_INLINE" | "POST_PUBLISH";
   safety: ReviewSafety;
   quality: ReviewQuality;
   recommendation: Recommendation;

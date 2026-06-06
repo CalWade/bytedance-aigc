@@ -29,6 +29,8 @@ enum DraftStatus {
 
 enum ReviewStage {
   PREFLIGHT
+  PROMPT_INPUT
+  SECTION_INLINE
   POST_PUBLISH
 }
 
@@ -50,6 +52,8 @@ enum DraftToolType {
   IMAGE_SUGGEST
   SAFETY_REVIEW
   QUALITY_REVIEW
+  PROMPT_REVIEW
+  SECTION_REVIEW
 }
 
 model User {
