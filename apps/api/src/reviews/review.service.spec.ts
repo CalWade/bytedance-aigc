@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { PromptsService } from "../prompts/prompts.service";
 import { DraftsService } from "../drafts/drafts.service";
 import { ReviewService } from "./review.service";
+import { DEMO_AUTHOR_ID } from "../../prisma/fixtures";
 
 const ALL_LOW_SAFETY = JSON.stringify({
   dimensions: [
@@ -131,5 +132,67 @@ describe("ReviewService.preflight", () => {
     const svc = makeService(partial, HIGH_QUALITY);
     const res = await svc.preflight("d1", "u1");
     expect(res.recommendation).toBe("BLOCK");
+  });
+});
+
+describe("reviewPrompt (Phase 2.5 ①)", () => {
+  const ALL_LOW_7CATS = JSON.stringify({
+    dimensions: [
+      { key: "politics", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "pornography", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "gambling", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "drugs", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "vulgarity", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "fraud", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "medical", score: 0, severity: "low", hits: [], reason: "无" },
+    ],
+  });
+  const POLITICS_HIGH_7CATS = JSON.stringify({
+    dimensions: [
+      { key: "politics", score: 90, severity: "high", hits: ["xxx"], reason: "命中" },
+      { key: "pornography", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "gambling", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "drugs", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "vulgarity", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "fraud", score: 0, severity: "low", hits: [], reason: "无" },
+      { key: "medical", score: 0, severity: "low", hits: [], reason: "无" },
+    ],
+  });
+
+  let service: ReviewService;
+  let llm: { chat: jest.Mock };
+
+  beforeEach(() => {
+    const drafts = {} as unknown as DraftsService;
+    llm = { chat: jest.fn() };
+    const prompts = {
+      findDefaultByTool: jest.fn().mockResolvedValue({ systemPrompt: "你是审核员", params: {} }),
+    } as unknown as PromptsService;
+    const prisma = {} as unknown as PrismaService;
+    service = new ReviewService(drafts, prisma, llm as unknown as LlmClient, prompts);
+  });
+
+  it("ALLOW happy path:全 low → recommendation ALLOW + hitCategories 空", async () => {
+    llm.chat.mockResolvedValueOnce(ALL_LOW_7CATS);
+    const res = await service.reviewPrompt("正常选题文本", DEMO_AUTHOR_ID);
+    expect(res.recommendation).toBe("ALLOW");
+    expect(res.hitCategories).toEqual([]);
+    expect(res.reviewId).toEqual(expect.any(String));
+  });
+
+  it("politics high → recommendation BLOCK + hitCategories 包含 politics", async () => {
+    llm.chat.mockResolvedValueOnce(POLITICS_HIGH_7CATS);
+    const res = await service.reviewPrompt("敏感选题", DEMO_AUTHOR_ID);
+    expect(res.recommendation).toBe("BLOCK");
+    expect(res.hitCategories).toContain("politics");
+  });
+
+  it("system message 拼接规则库 prompt_hint(包含 politics/pornography 提示)", async () => {
+    llm.chat.mockResolvedValueOnce(ALL_LOW_7CATS);
+    await service.reviewPrompt("xxx", DEMO_AUTHOR_ID);
+    const calledMessages = llm.chat.mock.calls[0][0] as Array<{ role: string; content: string }>;
+    const sys = calledMessages.find((m) => m.role === "system")?.content ?? "";
+    expect(sys).toContain("politics");
+    expect(sys).toContain("pornography");
   });
 });
