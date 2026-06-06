@@ -4,6 +4,9 @@ import { useState } from "react";
 import type { OutlineItem } from "@bytedance-aigc/shared";
 
 import { apiFetch } from "@/lib/auth";
+import { usePromptReview } from "@/hooks/use-prompt-review";
+
+import { PromptReviewBanner } from "./PromptReviewBanner";
 
 interface FastModeDialogProps {
   draftId: string;
@@ -17,6 +20,8 @@ export function FastModeDialog({ draftId, open, onClose, onAccept }: FastModeDia
   const [hint, setHint] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const promptReview = usePromptReview();
+  const composedText = (): string => `${topic.trim()}\n${hint.trim()}`.trim();
 
   if (!open) return null;
 
@@ -59,6 +64,7 @@ export function FastModeDialog({ draftId, open, onClose, onAccept }: FastModeDia
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
+            onBlur={() => promptReview.trigger(composedText())}
             className="rounded border border-zinc-300 dark:border-zinc-700 bg-transparent px-2 py-1.5 outline-none focus:border-zinc-500"
             placeholder="例:5G-A 商用启动"
           />
@@ -68,11 +74,23 @@ export function FastModeDialog({ draftId, open, onClose, onAccept }: FastModeDia
           <textarea
             value={hint}
             onChange={(e) => setHint(e.target.value)}
+            onBlur={() => promptReview.trigger(composedText())}
             rows={3}
             className="rounded border border-zinc-300 dark:border-zinc-700 bg-transparent px-2 py-1.5 outline-none focus:border-zinc-500"
             placeholder="例:请聚焦运营商成本下降的具体数据"
           />
         </label>
+        {promptReview.result && (
+          <PromptReviewBanner
+            result={promptReview.result}
+            onDismiss={promptReview.dismiss}
+            onChangeAngle={() => {
+              setTopic("");
+              setHint("");
+              promptReview.dismiss();
+            }}
+          />
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2">
           <button
