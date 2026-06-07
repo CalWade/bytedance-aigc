@@ -1,5 +1,6 @@
 "use client";
 import type { ReviewSafety, ReviewQuality } from "@bytedance-aigc/shared";
+import { QualityBadge } from "@/app/_components/QualityBadge";
 
 const SAFETY_LABEL: Record<string, string> = {
   pornography: "涉黄",
@@ -43,7 +44,10 @@ export function ScorePanel({
         {safety.note && <p className="text-xs text-red-600 mt-1">{safety.note}</p>}
       </section>
       <section>
-        <h3 className="text-sm font-semibold mb-2">质量分:{quality.overall} / 100</h3>
+        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+          质量分:{quality.overall} / 100
+          <QualityBadge score={quality.overall} size="sm" />
+        </h3>
         <ul className="text-xs space-y-1">
           {quality.dimensions.map((d) => (
             <li key={d.key} className="flex items-center justify-between">

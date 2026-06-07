@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { PostDetailDto } from "@bytedance-aigc/shared";
 import { serverFetchJson } from "@/lib/server-fetch";
 import { ReportButton } from "@/components/post/ReportButton";
+import { QualityBadge } from "@/app/_components/QualityBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,10 @@ export default async function PostPage({ params }: PageProps) {
           <Link href={`/authors/${post.authorId}`} className="underline">
             {post.authorHandle}
           </Link>
-          <span>· Q {post.qualityOverall.toFixed(0)}</span>
+          <span className="inline-flex items-center gap-1.5">
+            · Q {post.qualityOverall.toFixed(0)}
+            <QualityBadge score={post.qualityOverall} size="md" />
+          </span>
           <span>· H {post.hotnessMock.toFixed(0)}</span>
           <span>· {new Date(post.publishedAt).toLocaleString()}</span>
         </div>
