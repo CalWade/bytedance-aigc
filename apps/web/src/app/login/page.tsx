@@ -10,20 +10,25 @@ interface LoginResponse {
   user: AuthUser;
 }
 
+// WHY: 4 个名字与 apps/api/prisma/fixtures/users.ts 实际 seed 的 handle 严格对齐,
+// 默认值 demo-author 修了之前默认 'demo' 必然 401 的长期 bug。
+const QUICK_FILLS = ["demo-author", "admin", "tech-author", "life-author"] as const;
+
 export default function LoginPage() {
   const router = useRouter();
-  const [handle, setHandle] = useState("demo");
+  const [handle, setHandle] = useState<string>("demo-author");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // WHY: 把登录逻辑参数化抽出,quick-fill 按钮直接传 handle 进来,
+  // 绕开 setState 异步 + form.requestSubmit 的闭包陷阱(读到旧 handle)。
+  async function doLogin(h: string) {
     setSubmitting(true);
     setError(null);
     try {
       const res = await apiFetch("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ handle }),
+        body: JSON.stringify({ handle: h }),
         auth: false,
       });
       if (!res.ok) {
@@ -42,6 +47,11 @@ export default function LoginPage() {
     }
   }
 
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await doLogin(handle);
+  }
+
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <form
@@ -50,8 +60,24 @@ export default function LoginPage() {
       >
         <h1 className="text-xl font-semibold tracking-tight">登录</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          训练营 demo：输入 handle 即可登录（默认 <code>demo</code>）。
+          训练营 demo：输入 handle 即可登录（默认 <code>demo-author</code>）。
         </p>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_FILLS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                setHandle(h);
+                void doLogin(h);
+              }}
+              className="text-xs rounded border border-zinc-300 dark:border-zinc-700 px-2.5 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-900 disabled:opacity-50"
+            >
+              {h}
+            </button>
+          ))}
+        </div>
         <label className="flex flex-col gap-1 text-sm">
           <span>Handle</span>
           <input

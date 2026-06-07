@@ -69,3 +69,39 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm prisma:generate
       - run: pnpm build
+
+  e2e:
+    name: E2E (api)
+    runs-on: ubuntu-latest
+    # WHY: postgres 容器名/版本对齐本地 docker-compose(postgres:16-alpine);
+    # 库名 bytedance_aigc_test 与本地开发库 bytedance_aigc 区分,纯 CI 一次性。
+    # LLM_* / ADMIN_HANDLES 由 apps/api/test/setup-env.ts 兜底,不在此重复。
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bytedance_aigc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bytedance_aigc_test
+      JWT_SECRET: ci-e2e-secret-not-for-prod-32-chars-please
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      # WHY: 用 migrate deploy 不用 migrate dev — 后者会要交互、会写 migration history。
+      - run: pnpm --filter @bytedance-aigc/api exec prisma migrate deploy
+      - run: pnpm --filter @bytedance-aigc/api test:e2e
