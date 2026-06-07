@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { AssetsModule } from "./assets/assets.module";
 import { AuthModule } from "./auth/auth.module";
 import { JwtAuthGuard } from "./auth/jwt-auth.guard";
 import { PrismaKnownRequestFilter } from "./common/filters/prisma-known-request.filter";
@@ -30,6 +31,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
     ReviewsModule,
     ReportsModule,
     FeedModule,
+    AssetsModule,
   ],
   controllers: [AppController],
   providers: [

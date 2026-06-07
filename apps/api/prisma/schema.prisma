@@ -88,8 +88,24 @@ model User {
   drafts  Draft[]
   prompts Prompt[] @relation("UserPrompts")
   reports Report[] @relation("UserReports")
+  assets  Asset[]
 
   @@map("users")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String   @unique
+  url       String
+  mime      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("assets")
 }
 
 model Draft {

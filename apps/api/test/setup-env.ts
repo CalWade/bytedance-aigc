@@ -15,3 +15,6 @@ process.env.LLM_MODEL = process.env.LLM_MODEL ?? "fake-e2e-model";
 
 // Phase 2.6 — admin 白名单。e2e 用独立 admin 用户(handle=admin),需在 boot 前注入。
 process.env.ADMIN_HANDLES = process.env.ADMIN_HANDLES ?? "admin";
+
+// Phase 2.9 — 资产存储用 mock,避免 e2e 真打 S3/MinIO。AssetsModule 工厂按 driver 分支选实现。
+process.env.STORAGE_DRIVER = process.env.STORAGE_DRIVER ?? "mock";
