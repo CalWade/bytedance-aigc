@@ -6,8 +6,12 @@ import type { JSONContent, Editor } from "@tiptap/react";
 import type { Candidate, DraftToolType, OutlineItem } from "@bytedance-aigc/shared";
 
 import { apiFetch, clearToken, getToken } from "@/lib/auth";
+import { clearSnapshot, getSnapshot } from "@/lib/idb-draft-cache";
 import { useAutosave, type SaveResult } from "@/lib/use-autosave";
 
+import { ConflictBanner } from "./conflict-banner";
+import { OfflineBanner } from "./offline-banner";
+import { ReadonlyBanner } from "./readonly-banner";
 import { SaveStatus } from "./save-status";
 import { TiptapBody } from "./tiptap-body";
 import { VersionHistoryModal } from "./version-history-modal";
@@ -68,6 +72,9 @@ export function DraftEditor({ id }: { id: string }) {
   const [toolError, setToolError] = useState<string | null>(null);
   const [toolPanel, setToolPanel] = useState<ToolPanel | null>(null);
 
+  // T7: 冲突短期提示(spec §6),5s 后自动消;启动复活与 save 409 fork 都会置 true。
+  const [showConflictBanner, setShowConflictBanner] = useState(false);
+
   useEffect(() => {
     if (!getToken()) {
       router.replace("/login");
@@ -96,10 +103,62 @@ export function DraftEditor({ id }: { id: string }) {
         }
         const draft = (await res.json()) as DraftDetail;
         if (cancelled) return;
-        setTitle(draft.title);
-        setBody(draft.body ?? { type: "doc", content: [] });
-        setBaseVersion(draft.version);
-        setState({ kind: "ready", draft });
+
+        // T7: 启动复活 — 比对本地 IDB 快照 vs 云端 baseline(spec §4.3)。
+        let snap: Awaited<ReturnType<typeof getSnapshot>> = undefined;
+        try {
+          snap = await getSnapshot(id);
+        } catch {
+          // IDB 失败 fallback 到「无快照」分支
+        }
+        if (cancelled) return;
+
+        const cloudBody = draft.body ?? { type: "doc", content: [] };
+
+        if (!snap) {
+          // 无快照 → 用云端
+          setTitle(draft.title);
+          setBody(cloudBody);
+          setBaseVersion(draft.version);
+          setState({ kind: "ready", draft });
+        } else if (snap.baseVersion === draft.version) {
+          // 本地快照对得上云端 baseline → 复活本地(用户上次离线编辑)
+          setTitle(snap.title);
+          setBody(snap.body);
+          setBaseVersion(draft.version);
+          setState({ kind: "ready", draft });
+        } else if (snap.baseVersion < draft.version) {
+          // 他端先改了 → 落 OFFLINE_CONFLICT 备份(异步,失败吞掉)+ 用云端覆盖
+          void apiFetch(`/drafts/${id}/versions`, {
+            method: "POST",
+            body: JSON.stringify({ kind: "OFFLINE_CONFLICT", snapshot: snap.body }),
+          }).catch(() => {});
+          try {
+            await clearSnapshot(id);
+          } catch {
+            // 清快照失败不阻塞
+          }
+          if (cancelled) return;
+          setTitle(draft.title);
+          setBody(cloudBody);
+          setBaseVersion(draft.version);
+          setState({ kind: "ready", draft });
+          setShowConflictBanner(true);
+          setTimeout(() => setShowConflictBanner(false), 5000);
+        } else {
+          // snap.baseVersion > draft.version,理论不可能(防御性清快照)
+          console.warn("[draft-cache] snapshot baseVersion > server, clearing");
+          try {
+            await clearSnapshot(id);
+          } catch {
+            // ignore
+          }
+          if (cancelled) return;
+          setTitle(draft.title);
+          setBody(cloudBody);
+          setBaseVersion(draft.version);
+          setState({ kind: "ready", draft });
+        }
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -128,6 +187,12 @@ export function DraftEditor({ id }: { id: string }) {
           payload?: { currentVersion: number; title: string; body: JSONContent };
         };
         if (body.message === "VERSION_CONFLICT" && body.payload) {
+          // T7: 把本地 body 落为 OFFLINE_CONFLICT 备份(异步副作用,失败吞掉,
+          // 不阻塞 hook 走 onConflict 流程)
+          void apiFetch(`/drafts/${id}/versions`, {
+            method: "POST",
+            body: JSON.stringify({ kind: "OFFLINE_CONFLICT", snapshot: v.body }),
+          }).catch(() => {});
           return { ok: false, conflict: body.payload };
         }
         throw new Error("HTTP 409 unrecognized");
@@ -139,13 +204,20 @@ export function DraftEditor({ id }: { id: string }) {
     [id],
   );
 
-  // T7 会扩到 setContent + 显示 ConflictBanner;T6 先把 baseVersion state 同步,
-  // 让 hook 不卡死并保留 server 最新 baseline。
+  // T7: 收到 409 后把云端 baseline 推回 state + 编辑器,并显示 5s ConflictBanner。
+  // 注意 deps 含 editor —— useAutosave 内部用 ref 转储 onConflict,引用变更不会破状态机。
   const onConflict = useCallback(
     (server: { title: string; body: JSONContent; currentVersion: number }) => {
       setBaseVersion(server.currentVersion);
+      setTitle(server.title);
+      setBody(server.body);
+      if (editor) {
+        editor.commands.setContent(server.body);
+      }
+      setShowConflictBanner(true);
+      setTimeout(() => setShowConflictBanner(false), 5000);
     },
-    [],
+    [editor],
   );
 
   const enabledValue = state.kind === "ready" ? value : null;
@@ -282,8 +354,21 @@ export function DraftEditor({ id }: { id: string }) {
     return <main className="p-6 text-sm text-red-600">{state.message}</main>;
   }
 
+  // T7: 顶部 Banner stack(spec §6 优先级:Readonly > Offline > Conflict,只显一条)
+  // ReadonlyBanner 当前 stub 为 false,T8 接 useDraftPresence 拿真实多 Tab 抢占状态。
+  const isReadonly = false;
+  const isOffline = status === "offline";
+  const bannerSlot = isReadonly ? (
+    <ReadonlyBanner visible={true} />
+  ) : isOffline ? (
+    <OfflineBanner visible={true} />
+  ) : showConflictBanner ? (
+    <ConflictBanner visible={true} onOpenVersionHistory={() => setVersionHistoryOpen(true)} />
+  ) : null;
+
   return (
     <main className="flex flex-1 flex-col gap-4 px-6 py-6 max-w-3xl w-full mx-auto">
+      {bannerSlot}
       <header className="flex items-center justify-between gap-4">
         <input
           type="text"
