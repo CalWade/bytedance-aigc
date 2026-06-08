@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JSONContent, Editor } from "@tiptap/react";
 import type { Candidate, DraftToolType, OutlineItem } from "@bytedance-aigc/shared";
 
@@ -74,6 +74,28 @@ export function DraftEditor({ id }: { id: string }) {
 
   // T7: 冲突短期提示(spec §6),5s 后自动消;启动复活与 save 409 fork 都会置 true。
   const [showConflictBanner, setShowConflictBanner] = useState(false);
+  const conflictBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showConflictBannerWithTimeout = useCallback(() => {
+    if (conflictBannerTimerRef.current) {
+      clearTimeout(conflictBannerTimerRef.current);
+    }
+    setShowConflictBanner(true);
+    conflictBannerTimerRef.current = setTimeout(() => {
+      setShowConflictBanner(false);
+      conflictBannerTimerRef.current = null;
+    }, 5000);
+  }, []);
+
+  // unmount cleanup: 清掉残留 timer 防泄漏
+  useEffect(
+    () => () => {
+      if (conflictBannerTimerRef.current) {
+        clearTimeout(conflictBannerTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!getToken()) {
@@ -143,11 +165,13 @@ export function DraftEditor({ id }: { id: string }) {
           setBody(cloudBody);
           setBaseVersion(draft.version);
           setState({ kind: "ready", draft });
-          setShowConflictBanner(true);
-          setTimeout(() => setShowConflictBanner(false), 5000);
+          showConflictBannerWithTimeout();
         } else {
           // snap.baseVersion > draft.version,理论不可能(防御性清快照)
-          console.warn("[draft-cache] snapshot baseVersion > server, clearing");
+          console.warn(
+            `[draft-cache] snapshot baseVersion ${snap.baseVersion} > server version ${draft.version}, clearing`,
+            { draftId: id },
+          );
           try {
             await clearSnapshot(id);
           } catch {
@@ -214,8 +238,7 @@ export function DraftEditor({ id }: { id: string }) {
       if (editor) {
         editor.commands.setContent(server.body);
       }
-      setShowConflictBanner(true);
-      setTimeout(() => setShowConflictBanner(false), 5000);
+      showConflictBannerWithTimeout();
     },
     [editor],
   );
