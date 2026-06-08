@@ -4,6 +4,7 @@ import { serverFetchJson } from "@/lib/server-fetch";
 import { FeedList } from "./_components/FeedList";
 import { LoadMore } from "./_components/LoadMore";
 import { RankTabs } from "./_components/RankTabs";
+import { SafeRewriteHintBanner } from "./_components/SafeRewriteHintBanner";
 import { WeightDrawer } from "./_components/WeightDrawer";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const data = await serverFetchJson<FeedResponse>(`/feed?${qs.toString()}`);
   return (
     <main className="max-w-6xl mx-auto px-4 py-6">
+      <SafeRewriteHintBanner />
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">推荐</h1>
         <WeightDrawer />
