@@ -8,7 +8,7 @@ import { VersionDiff } from "@/components/version-diff";
 
 interface VersionDto {
   id: string;
-  kind: "AUTO" | "NAMED" | "PUBLISHED";
+  kind: "AUTO" | "NAMED" | "PUBLISHED" | "OFFLINE_CONFLICT";
   note: string | null;
   wordCount: number;
   createdAt: string;
@@ -40,6 +40,10 @@ const KIND_CHIP: Record<VersionDto["kind"], { label: string; cls: string }> = {
   PUBLISHED: {
     label: "已发布",
     cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  },
+  OFFLINE_CONFLICT: {
+    label: "冲突备份",
+    cls: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   },
 };
 
