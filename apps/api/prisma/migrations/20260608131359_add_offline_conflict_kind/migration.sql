@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "VersionKind" ADD VALUE 'OFFLINE_CONFLICT';

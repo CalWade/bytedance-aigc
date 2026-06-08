@@ -140,6 +140,7 @@ enum VersionKind {
   AUTO
   NAMED
   PUBLISHED
+  OFFLINE_CONFLICT
 }
 
 model DraftVersion {
