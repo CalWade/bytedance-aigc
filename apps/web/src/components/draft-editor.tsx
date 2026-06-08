@@ -6,7 +6,7 @@ import type { JSONContent, Editor } from "@tiptap/react";
 import type { Candidate, DraftToolType, OutlineItem } from "@bytedance-aigc/shared";
 
 import { apiFetch, clearToken, getToken } from "@/lib/auth";
-import { useAutosave } from "@/lib/use-autosave";
+import { useAutosave, type SaveResult } from "@/lib/use-autosave";
 
 import { SaveStatus } from "./save-status";
 import { TiptapBody } from "./tiptap-body";
@@ -53,6 +53,9 @@ export function DraftEditor({ id }: { id: string }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState<JSONContent>({ type: "doc", content: [] });
   const [editor, setEditor] = useState<Editor | null>(null);
+  // baseVersion 由 GET /drafts/:id 设入,save 成功 / 冲突时 hook 内部更新 ref;
+  // 这里 state 仅在外显场景(冲突 callback)写回让 hook 重读最新 baseline。
+  const [baseVersion, setBaseVersion] = useState<number>(1);
 
   const [fastDialogOpen, setFastDialogOpen] = useState(false);
   const [fast, setFast] = useState<FastStage>({ kind: "idle" });
@@ -95,6 +98,7 @@ export function DraftEditor({ id }: { id: string }) {
         if (cancelled) return;
         setTitle(draft.title);
         setBody(draft.body ?? { type: "doc", content: [] });
+        setBaseVersion(draft.version);
         setState({ kind: "ready", draft });
       })
       .catch((err: unknown) => {
@@ -112,24 +116,44 @@ export function DraftEditor({ id }: { id: string }) {
   const value = useMemo(() => ({ title, body }), [title, body]);
 
   const save = useCallback(
-    async (v: { title: string; body: JSONContent }) => {
+    async (v: { title: string; body: JSONContent }, bv: number): Promise<SaveResult> => {
       const res = await apiFetch(`/drafts/${id}`, {
         method: "PATCH",
-        body: JSON.stringify(v),
+        body: JSON.stringify({ ...v, baseVersion: bv }),
       });
+      if (res.status === 409) {
+        // NestJS ConflictException 返回 body 等于 throw 时传入对象本身,无 statusCode 字段
+        const body = (await res.json()) as {
+          message?: string;
+          payload?: { currentVersion: number; title: string; body: JSONContent };
+        };
+        if (body.message === "VERSION_CONFLICT" && body.payload) {
+          return { ok: false, conflict: body.payload };
+        }
+        throw new Error("HTTP 409 unrecognized");
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { version: number };
+      return { ok: true, newVersion: data.version };
     },
     [id],
   );
 
-  const enabledValue = state.kind === "ready" ? value : null;
-  const { status, lastSavedAt, setStreaming, flush } = useAutosave(
-    enabledValue,
-    async (v) => {
-      if (v) await save(v);
+  // T7 会扩到 setContent + 显示 ConflictBanner;T6 先把 baseVersion state 同步,
+  // 让 hook 不卡死并保留 server 最新 baseline。
+  const onConflict = useCallback(
+    (server: { title: string; body: JSONContent; currentVersion: number }) => {
+      setBaseVersion(server.currentVersion);
     },
-    1500,
+    [],
   );
+
+  const enabledValue = state.kind === "ready" ? value : null;
+  const { status, lastSavedAt, setStreaming, flush } = useAutosave(enabledValue, save, {
+    draftId: id,
+    baseVersion,
+    onConflict,
+  });
 
   // 调 /drafts/:id/tools/invoke
   const invokeTool = useCallback(

@@ -39,6 +39,12 @@ export function SaveStatus({ status, lastSavedAt, onRetry }: SaveStatusProps) {
   }
   if (status === "saving") return <span className="text-sm text-zinc-500">保存中…</span>;
   if (status === "dirty") return <span className="text-sm text-zinc-500">未保存的更改</span>;
+  if (status === "offline") {
+    return <span className="text-sm text-amber-600">未保存(离线中)</span>;
+  }
+  if (status === "conflict") {
+    return <span className="text-sm text-amber-600">他端已修改,已为你保留冲突备份</span>;
+  }
   if (status === "saved" && lastSavedAt !== null) {
     return <span className="text-sm text-zinc-500">已保存 · {relativeTime(lastSavedAt, now)}</span>;
   }
