@@ -29,6 +29,8 @@ describe("SectionReviewCard", () => {
     render(
       <SectionReviewCard
         item={makeItem()}
+        draftId="d1"
+        text="段落原文"
         onRegenerate={onRegenerate}
         onApplySuggestion={onApplySuggestion}
         onKeep={onKeep}
@@ -47,6 +49,8 @@ describe("SectionReviewCard", () => {
     render(
       <SectionReviewCard
         item={makeItem()}
+        draftId="d1"
+        text="段落原文"
         onRegenerate={onRegenerate}
         onApplySuggestion={onApplySuggestion}
         onKeep={onKeep}
@@ -65,6 +69,8 @@ describe("SectionReviewCard", () => {
     render(
       <SectionReviewCard
         item={makeItem()}
+        draftId="d1"
+        text="段落原文"
         onRegenerate={onRegenerate}
         onApplySuggestion={onApplySuggestion}
         onKeep={onKeep}

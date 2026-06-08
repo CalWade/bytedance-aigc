@@ -142,6 +142,8 @@ export function SectionStream({
         <SectionReviewCard
           key={`${item.range.from}-${item.range.to}-${idx}`}
           item={item}
+          draftId={draftId}
+          text={editor?.state.doc.textBetween(item.range.from, item.range.to, "\n") ?? ""}
           onRegenerate={async (heading) => {
             if (!editor) return;
             try {

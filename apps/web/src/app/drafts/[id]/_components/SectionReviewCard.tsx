@@ -1,23 +1,36 @@
 "use client";
 
+import { useState } from "react";
+
 import type { SectionReviewItem } from "@/hooks/use-section-review";
+
+import { SafeRewriteCard } from "./SafeRewriteCard";
 
 interface Props {
   item: SectionReviewItem;
+  draftId: string;
+  text: string;
   onRegenerate: (heading: string) => void;
   onApplySuggestion: (heading: string, suggestion: string) => void;
   onKeep: (heading: string) => void;
 }
 
-export function SectionReviewCard({ item, onRegenerate, onApplySuggestion, onKeep }: Props) {
+export function SectionReviewCard({
+  item,
+  draftId,
+  text,
+  onRegenerate,
+  onApplySuggestion,
+  onKeep,
+}: Props) {
+  const [rewriteOpen, setRewriteOpen] = useState(false);
+
   const tone =
     item.result.severity === "high"
       ? "border-red-500 bg-red-50 dark:bg-red-950/40"
       : "border-amber-500 bg-amber-50 dark:bg-amber-950/40";
 
-  // SectionReviewResponse 不带 suggestion 字段(本期不扩 shared schema),
-  // 用 result.message 作为修改建议文本兜底,Phase 2.7 接 REWRITE_FLUENT 工具卡再升级。
-  const suggestion = item.result.message;
+  const isMedium = item.result.severity === "medium";
 
   return (
     <div className={`mt-2 rounded border-l-4 px-3 py-2 text-sm ${tone}`}>
@@ -36,9 +49,15 @@ export function SectionReviewCard({ item, onRegenerate, onApplySuggestion, onKee
         <button
           type="button"
           className="text-xs rounded px-2 py-0.5"
-          onClick={() => onApplySuggestion(item.heading, suggestion)}
+          onClick={() => {
+            if (isMedium) {
+              setRewriteOpen(true);
+            } else {
+              onApplySuggestion(item.heading, item.result.message);
+            }
+          }}
         >
-          修改建议
+          {isMedium ? "合规替代" : "修改建议"}
         </button>
         <button
           type="button"
@@ -48,6 +67,17 @@ export function SectionReviewCard({ item, onRegenerate, onApplySuggestion, onKee
           仍要保留
         </button>
       </div>
+      <SafeRewriteCard
+        open={rewriteOpen}
+        request={{
+          draftId,
+          text,
+          hitCategories: item.result.hitCategories,
+          message: item.result.message,
+        }}
+        onAdopt={(t) => onApplySuggestion(item.heading, t)}
+        onClose={() => setRewriteOpen(false)}
+      />
     </div>
   );
 }
