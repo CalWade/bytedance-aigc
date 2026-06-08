@@ -6,6 +6,7 @@ import type { PreflightResponse } from "@bytedance-aigc/shared";
 import { ScorePanel } from "./ScorePanel";
 import { RecommendationBadge } from "./RecommendationBadge";
 import { usePreflight, usePublish } from "@/lib/use-preflight";
+import { safetyKeyToSensitiveCategory } from "@/lib/safety-key-map";
 
 /**
  * Phase 2.3 发布前审核弹窗。父组件控制 open。打开时 useEffect 触发预检会被
@@ -81,6 +82,15 @@ export function PreflightDialog({
               onQualityDimensionClick={(key) => {
                 router.push(`/drafts/${draftId}?qualityDimension=${key}`);
                 onClose();
+              }}
+              onSafeRewrite={(key) => {
+                const cat = safetyKeyToSensitiveCategory(key);
+                localStorage.setItem(
+                  "safeRewriteHint",
+                  JSON.stringify({ draftId, category: cat, ts: Date.now() }),
+                );
+                onClose();
+                router.push("/");
               }}
             />
             <footer className="mt-5 flex justify-end gap-2">

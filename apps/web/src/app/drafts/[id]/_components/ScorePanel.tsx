@@ -1,5 +1,5 @@
 "use client";
-import type { ReviewSafety, ReviewQuality } from "@bytedance-aigc/shared";
+import type { ReviewSafety, ReviewQuality, SafetyKey } from "@bytedance-aigc/shared";
 import { QualityBadge } from "@/app/_components/QualityBadge";
 
 const SAFETY_LABEL: Record<string, string> = {
@@ -22,10 +22,12 @@ export function ScorePanel({
   safety,
   quality,
   onQualityDimensionClick,
+  onSafeRewrite,
 }: {
   safety: ReviewSafety;
   quality: ReviewQuality;
   onQualityDimensionClick?: (key: string) => void;
+  onSafeRewrite?: (key: SafetyKey) => void;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -37,7 +39,18 @@ export function ScorePanel({
               <span>
                 {SAFETY_LABEL[d.key] ?? d.key} · {d.severity}
               </span>
-              <span>{d.score}</span>
+              <span className="flex items-center gap-2">
+                <span>{d.score}</span>
+                {d.severity === "medium" && onSafeRewrite && (
+                  <button
+                    type="button"
+                    onClick={() => onSafeRewrite(d.key as SafetyKey)}
+                    className="text-xs rounded border border-amber-500 text-amber-700 px-1.5 py-0.5"
+                  >
+                    合规替代
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>
