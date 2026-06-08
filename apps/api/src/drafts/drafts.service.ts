@@ -69,6 +69,28 @@ export class DraftsService {
     return draft;
   }
 
+  /**
+   * Phase 2.15:已 PUBLISHED 的稿件切回 DRAFT,作者继续二次编辑。
+   * 显式状态转移端点(不复用 PATCH),version+1 让任何 /post/:id 客户端缓存自洽失效。
+   */
+  async edit(
+    id: string,
+    authorId: string,
+  ): Promise<{ id: string; status: "DRAFT"; version: number }> {
+    const cur = await this.assertAuthor(id, authorId);
+    if (cur.status !== "PUBLISHED") {
+      throw new ConflictException({
+        code: "EDIT_NOT_ALLOWED",
+        message: "仅 PUBLISHED 状态可进入二次编辑",
+      });
+    }
+    const updated = await this.prisma.draft.update({
+      where: { id },
+      data: { status: "DRAFT", version: { increment: 1 } },
+    });
+    return { id: updated.id, status: "DRAFT", version: updated.version };
+  }
+
   async update(id: string, authorId: string, dto: UpdateDraftDto): Promise<Draft> {
     const cur = await this.assertAuthor(id, authorId);
     // Phase 2.14:乐观并发。客户端带 baseVersion 时,后端比对当前 DB 版本;
