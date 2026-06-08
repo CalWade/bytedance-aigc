@@ -20,7 +20,7 @@ export class PromptsService {
         owner: "PLATFORM",
         ...(query.tool
           ? { tool: query.tool }
-          : { tool: { notIn: ["SAFETY_REVIEW", "QUALITY_REVIEW"] } }),
+          : { tool: { notIn: ["SAFETY_REVIEW", "QUALITY_REVIEW", "SAFE_REWRITE"] } }),
       },
       orderBy: [{ tool: "asc" }, { createdAt: "asc" }],
     });
@@ -94,7 +94,11 @@ export class PromptsService {
   async copyToPrivate(platformId: string, userSub: string): Promise<Prompt> {
     const source = await this.prisma.prompt.findUnique({ where: { id: platformId } });
     if (!source) throw new NotFoundException(`Prompt ${platformId} not found`);
-    if (source.tool === "SAFETY_REVIEW" || source.tool === "QUALITY_REVIEW") {
+    if (
+      source.tool === "SAFETY_REVIEW" ||
+      source.tool === "QUALITY_REVIEW" ||
+      source.tool === "SAFE_REWRITE"
+    ) {
       throw new BadRequestException("此 Prompt 由平台独占,不可复制为私人副本");
     }
     if (source.owner !== "PLATFORM") {

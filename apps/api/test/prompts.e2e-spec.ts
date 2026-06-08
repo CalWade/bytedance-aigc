@@ -49,13 +49,19 @@ describe("PromptsController (e2e)", () => {
 
     expect(Array.isArray(list)).toBe(true);
     // Phase 2.3 起 SAFETY_REVIEW / QUALITY_REVIEW 是平台保留 Prompt,默认从 list 隐藏
+    // Phase 2.13 起 SAFE_REWRITE 同为平台保留 Prompt,默认从 list 隐藏
     const visible = PROMPT_STARTERS.filter(
-      (p) => p.tool !== "SAFETY_REVIEW" && p.tool !== "QUALITY_REVIEW",
+      (p) => p.tool !== "SAFETY_REVIEW" && p.tool !== "QUALITY_REVIEW" && p.tool !== "SAFE_REWRITE",
     );
     expect(list.length).toBe(visible.length);
     expect(list.every((p) => p.owner === "PLATFORM")).toBe(true);
     expect(list.every((p) => p.isStarter === true)).toBe(true);
-    expect(list.every((p) => p.tool !== "SAFETY_REVIEW" && p.tool !== "QUALITY_REVIEW")).toBe(true);
+    expect(
+      list.every(
+        (p) =>
+          p.tool !== "SAFETY_REVIEW" && p.tool !== "QUALITY_REVIEW" && p.tool !== "SAFE_REWRITE",
+      ),
+    ).toBe(true);
   });
 
   it("GET /prompts?tool=REWRITE_FLUENT -> 200 returns filtered list", async () => {
