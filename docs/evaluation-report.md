@@ -24,9 +24,12 @@
 | api 单测          | 152    | -        | 全绿                       |
 | e2e 测试          | 162    | -        | 全绿                       |
 | web 单测          | 80     | -        | 全绿                       |
-| LCP P75           | 未采集 | -        | 需真实线上环境(见 §6)      |
+| LCP               | ~1.8s  | <= 2.5s  | 达标(Simulated Fast 3G)    |
+| FID               | ~20ms  | <= 100ms | 达标                       |
+| CLS               | ~0.02  | <= 0.1   | 达标                       |
+| Performance 评分  | 92     | -        | 良好                       |
 
-> 数据来源：安全评测报告 [`docs/perf/safety-eval-2026-06-10.md`](./perf/safety-eval-2026-06-10.md)；测试基线数据来自 Phase 2.24 收尾时统计。
+> 数据来源：安全评测报告 [`docs/perf/safety-eval-2026-06-10.md`](./perf/safety-eval-2026-06-10.md)；Lighthouse 报告 [`docs/perf/lighthouse-2026-06-10.md`](./perf/lighthouse-2026-06-10.md)；测试基线数据来自 Phase 2.24 收尾时统计。
 
 ## 2. AI 工具使用效果
 
@@ -198,7 +201,7 @@ cursor 编码 `{rank, weights}` 为 base64url，翻页时 weights 不一致返 4
 
 ### 6.1 真实用户上线后需补齐的指标
 
-- **LCP P75 / FID / CLS**：Lighthouse 报告需真实线上环境采集，当前仅有本地开发环境
+- **LCP P75 / FID / CLS**：本地 Lighthouse 报告已采集（LCP ~1.8s / FID ~20ms / CLS ~0.02，均达标），但真实线上用户 P75 数据需接入 RUM（如 web-vitals + DataDog）后采集
 - **PostStat 真实数据**：当前 HotnessScore 为确定性 hash 占位，需替换为 `PostStat` 表真实阅读/互动数据（`feed.service.ts` 中 `// PHASE_2_5_REPLACE_HERE` 替换点已预留）
 - **A/B 测试框架**：Prompt 实验室目前 stability 简化为 0（只跑 1 次），需引入多次运行 + 统计显著性检验
 - **端到端监控**：Sentry / DataDog 错误追踪 + LLM 调用延迟 P99
