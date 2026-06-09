@@ -181,10 +181,26 @@ model Prompt {
   author       User?    @relation("UserPrompts", fields: [authorId], references: [id], onDelete: Cascade)
   sourcePrompt Prompt?  @relation("PromptCopy", fields: [sourcePromptId], references: [id])
   copies       Prompt[] @relation("PromptCopy")
+  snapshots    PromptSnapshot[]
 
   @@index([owner, tool])
   @@index([authorId])
   @@map("prompts")
+}
+
+model PromptSnapshot {
+  id           String   @id @default(cuid())
+  promptId     String
+  systemPrompt String   @db.Text
+  params       Json
+  fewShots     Json
+  designNote   String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  prompt Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@index([promptId, createdAt])
+  @@map("prompt_snapshots")
 }
 
 model Review {
