@@ -62,7 +62,7 @@ async function main(): Promise<void> {
         if (r.kind === "error") return { expected, predicted: undefined, error: r.message };
         const predicted: Label = r.value.hitCategories.includes(expected as SensitiveCategory)
           ? expected
-          : ((r.value.hitCategories[0] as Label) ?? "allow");
+          : (r.value.hitCategories[0] ?? "allow");
         return { expected, predicted };
       }),
     ),
