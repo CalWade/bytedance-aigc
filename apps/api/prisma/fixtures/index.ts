@@ -38,6 +38,7 @@ export async function cleanupAllFixtures(prisma: PrismaClient): Promise<void> {
   await prisma.draftVersion.deleteMany();
   await prisma.postStat.deleteMany();
   await prisma.draft.deleteMany();
+  await prisma.asset.deleteMany();
   await prisma.prompt.deleteMany();
   await prisma.user.deleteMany();
 }

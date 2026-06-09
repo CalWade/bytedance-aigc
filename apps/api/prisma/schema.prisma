@@ -96,13 +96,17 @@ model User {
 }
 
 model Asset {
-  id        String   @id @default(cuid())
-  userId    String
-  key       String   @unique
-  url       String
-  mime      String
-  size      Int
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  key         String   @unique
+  url         String
+  mime        String
+  size        Int
+  aiGenerated Boolean  @default(false)
+  aiPrompt    String?  @db.Text
+  sceneTags   String[] @default([])
+  subjectTags String[] @default([])
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
