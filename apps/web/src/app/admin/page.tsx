@@ -30,6 +30,11 @@ export default function AdminHomePage() {
           title="规则复审"
           desc="规则更新后批量重审已发布作品,命中 BLOCK 自动下线"
         />
+        <NavCard
+          href="/admin/prompt-lab"
+          title="Prompt 实验室"
+          desc="批量评估 Prompt 准确率,版本对比,一键上线与回滚"
+        />
       </div>
     </main>
   );
