@@ -1,8 +1,16 @@
-import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { Asset } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
+import { AssetReviewResult, AssetReviewService } from "./asset-review.service";
 import { AssetTaggingService } from "./asset-tagging.service";
 import { STORAGE_SERVICE, type StorageService } from "./storage/storage.service";
 
@@ -20,6 +28,7 @@ const AI_IMAGE_URL = "https://placehold.co/512x512/e0e0e0/333?text=AI+Generated"
 
 interface UploadOptions {
   tagSync?: boolean;
+  aiDeclared?: boolean;
 }
 
 interface SearchParams {
@@ -41,6 +50,7 @@ export class AssetsService {
     private readonly prisma: PrismaService,
     @Inject(STORAGE_SERVICE) private readonly storage: StorageService,
     private readonly taggingService: AssetTaggingService,
+    private readonly reviewService: AssetReviewService,
   ) {}
 
   async upload(userId: string, file: Express.Multer.File, opts?: UploadOptions): Promise<Asset> {
@@ -52,6 +62,21 @@ export class AssetsService {
       throw new BadRequestException(`file too large: ${file.size} > ${MAX_BYTES}`);
     }
 
+    // PRD §4.6.1 入库时合规校验
+    const review = await this.reviewService.reviewAsset({
+      mime: file.mimetype,
+      filename: file.originalname ?? "",
+      sceneTags: [],
+      subjectTags: [],
+      aiGenerated: false,
+      aiDeclared: opts?.aiDeclared ?? false,
+      stage: "INGEST",
+    });
+
+    if (review.recommendation === "BLOCK") {
+      throw new BadRequestException(`素材合规校验未通过: ${review.reason}`);
+    }
+
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -60,6 +85,7 @@ export class AssetsService {
 
     const { url } = await this.storage.put(key, file.buffer, file.mimetype);
 
+    const reviewStatus = this.reviewService.recommendationToStatus(review.recommendation);
     const asset = await this.prisma.asset.create({
       data: {
         userId,
@@ -67,6 +93,8 @@ export class AssetsService {
         url,
         mime: file.mimetype,
         size: file.size,
+        reviewStatus,
+        reviewNote: review.reason,
       },
     });
 
@@ -113,8 +141,24 @@ export class AssetsService {
       throw new BadRequestException("prompt exceeds 500 characters");
     }
 
+    // PRD §4.6.1 入库时合规校验 — AI 生图 aiDeclared 强制 true
+    const review = await this.reviewService.reviewAsset({
+      mime: "image/png",
+      filename: "",
+      sceneTags: [],
+      subjectTags: [],
+      aiGenerated: true,
+      aiDeclared: true,
+      stage: "INGEST",
+    });
+
+    if (review.recommendation === "BLOCK") {
+      throw new BadRequestException(`素材合规校验未通过: ${review.reason}`);
+    }
+
     const key = `users/${userId}/ai/${randomUUID()}.png`;
 
+    const reviewStatus = this.reviewService.recommendationToStatus(review.recommendation);
     const asset = await this.prisma.asset.create({
       data: {
         userId,
@@ -124,6 +168,8 @@ export class AssetsService {
         size: 0,
         aiGenerated: true,
         aiPrompt: trimmed,
+        reviewStatus,
+        reviewNote: review.reason,
       },
     });
 
@@ -182,5 +228,29 @@ export class AssetsService {
     scored.sort((a, b) => b.score - a.score);
 
     return scored.slice(0, topN);
+  }
+
+  /**
+   * PRD §4.6.1 插入文章前合规校验:即便已在库,插入正文时再过一遍最新规则。
+   * 返 WARN/ALLOW/BLOCK,作者可选择「换图 / 仍使用」。
+   */
+  async checkForInsert(userId: string, assetId: string): Promise<AssetReviewResult> {
+    const asset = await this.prisma.asset.findUnique({ where: { id: assetId } });
+    if (!asset) {
+      throw new NotFoundException(`Asset ${assetId} not found`);
+    }
+    if (asset.userId !== userId) {
+      throw new ForbiddenException("Not your asset");
+    }
+
+    return this.reviewService.reviewAsset({
+      mime: asset.mime,
+      filename: asset.key.split("/").pop() ?? "",
+      sceneTags: asset.sceneTags,
+      subjectTags: asset.subjectTags,
+      aiGenerated: asset.aiGenerated,
+      aiDeclared: asset.aiGenerated,
+      stage: "PRE_INSERT",
+    });
   }
 }

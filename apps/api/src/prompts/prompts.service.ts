@@ -20,7 +20,9 @@ export class PromptsService {
         owner: "PLATFORM",
         ...(query.tool
           ? { tool: query.tool }
-          : { tool: { notIn: ["SAFETY_REVIEW", "QUALITY_REVIEW", "SAFE_REWRITE"] } }),
+          : {
+              tool: { notIn: ["SAFETY_REVIEW", "QUALITY_REVIEW", "SAFE_REWRITE", "IMAGE_REVIEW"] },
+            }),
       },
       orderBy: [{ tool: "asc" }, { createdAt: "asc" }],
     });
@@ -97,7 +99,8 @@ export class PromptsService {
     if (
       source.tool === "SAFETY_REVIEW" ||
       source.tool === "QUALITY_REVIEW" ||
-      source.tool === "SAFE_REWRITE"
+      source.tool === "SAFE_REWRITE" ||
+      source.tool === "IMAGE_REVIEW"
     ) {
       throw new BadRequestException("此 Prompt 由平台独占,不可复制为私人副本");
     }

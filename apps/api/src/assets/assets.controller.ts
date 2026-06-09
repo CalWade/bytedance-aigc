@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   UploadedFile,
@@ -36,14 +37,21 @@ export class AssetsController {
 
   @Post("upload")
   @UseInterceptors(FileInterceptor("file"))
-  async upload(@CurrentUser() user: JwtPayload, @UploadedFile() file: Express.Multer.File) {
-    const asset = await this.assets.upload(user.sub, file);
+  async upload(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: Express.Multer.File,
+    @Query("aiDeclared") aiDeclared?: string,
+  ) {
+    const asset = await this.assets.upload(user.sub, file, {
+      aiDeclared: aiDeclared === "true",
+    });
     return {
       id: asset.id,
       key: asset.key,
       url: asset.url,
       mime: asset.mime,
       size: asset.size,
+      reviewStatus: asset.reviewStatus,
     };
   }
 
@@ -67,6 +75,7 @@ export class AssetsController {
       aiPrompt: asset.aiPrompt,
       sceneTags: asset.sceneTags,
       subjectTags: asset.subjectTags,
+      reviewStatus: asset.reviewStatus,
     };
   }
 
@@ -92,5 +101,11 @@ export class AssetsController {
   async recommend(@CurrentUser() user: JwtPayload, @Body() dto: RecommendDto) {
     const items = await this.assets.recommendForBody(user.sub, dto.body);
     return { items };
+  }
+
+  /** PRD §4.6.1 插入文章前合规校验 */
+  @Post(":id/check-for-insert")
+  async checkForInsert(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.assets.checkForInsert(user.sub, id);
   }
 }
