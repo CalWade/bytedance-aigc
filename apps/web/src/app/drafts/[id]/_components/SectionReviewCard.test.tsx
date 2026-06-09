@@ -11,7 +11,7 @@ function makeItem(overrides: Partial<SectionReviewItem> = {}): SectionReviewItem
     range: { from: 1, to: 10 },
     result: {
       recommendation: "WARN",
-      hitCategories: ["politics"],
+      hitCategories: ["pornography"],
       severity: "high",
       message: "建议改写为更中性表述",
       abortStream: false,
