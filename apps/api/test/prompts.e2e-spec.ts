@@ -55,7 +55,8 @@ describe("PromptsController (e2e)", () => {
     );
     expect(list.length).toBe(visible.length);
     expect(list.every((p) => p.owner === "PLATFORM")).toBe(true);
-    expect(list.every((p) => p.isStarter === true)).toBe(true);
+    // Phase 2.19: list 返回默认款+风格款,不再全是 isStarter
+    expect(list.some((p) => p.isStarter === true)).toBe(true);
     expect(
       list.every(
         (p) =>
