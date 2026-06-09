@@ -19,9 +19,12 @@ export class PostsController {
 
     const hotnessRaw = hotnessMockBase(draft.id);
     const quality = readQ(draft.lastReview?.quality);
+    // Phase 2.15:优先 publishedTitle/publishedBody,二发期间老线上版仍可见
+    const liveTitle = draft.publishedTitle ?? draft.title;
+    const liveBody = draft.publishedBody ?? draft.body;
     return {
       id: draft.id,
-      title: draft.title,
+      title: liveTitle,
       authorId: draft.authorId,
       authorHandle: draft.author.handle,
       publishedAt: (draft.publishedAt ?? draft.updatedAt).toISOString(),
@@ -29,7 +32,7 @@ export class PostsController {
       hotnessMock: normalizeHotness(hotnessRaw, [hotnessRaw]),
       coverIndex: (Math.abs(hashId(draft.id)) % 5) + 1,
       excerpt: "",
-      body: draft.body,
+      body: liveBody,
       qualityRecommendation: draft.lastReview?.recommendation ?? "ALLOW",
     };
   }

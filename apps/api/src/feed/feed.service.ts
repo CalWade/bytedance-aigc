@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import {
   computeScore,
   hotnessMockBase,
@@ -57,8 +58,16 @@ export class FeedService {
     const windowMs = WINDOW_HOURS[opts.mode] * 3600_000;
     const since = new Date(now.getTime() - windowMs);
 
+    // Phase 2.15:二发期间(status=DRAFT/REVIEWING + publishedBody 非空)
+    // 老线上版仍在 feed 里可见,直到新版本通过 publish() 覆盖 publishedBody。
     const drafts = await this.prisma.draft.findMany({
-      where: { status: "PUBLISHED", publishedAt: { gte: since } },
+      where: {
+        publishedAt: { gte: since },
+        OR: [
+          { status: "PUBLISHED" },
+          { status: { in: ["DRAFT", "REVIEWING"] }, publishedBody: { not: Prisma.JsonNull } },
+        ],
+      },
       include: {
         author: { select: { id: true, handle: true } },
         lastReview: { select: { quality: true } },
@@ -107,14 +116,26 @@ export class FeedService {
         lastReview: { select: { quality: true, recommendation: true } },
       },
     });
-    if (!draft || draft.status !== "PUBLISHED") return null;
+    if (!draft) return null;
+    if (draft.status === "OFFLINE") return null;
+    // Phase 2.15:PUBLISHED 直读;DRAFT/REVIEWING 但 publishedBody 非空(二发期间)
+    // 仍可见 — 老线上版保留显示直到新版本通过 publish() 覆盖。
+    const isLive = draft.status === "PUBLISHED" || draft.publishedBody !== null;
+    if (!isLive) return null;
     if (draft.lastReview?.recommendation === "BLOCK") return null;
     return draft;
   }
 
   async getAuthorPosts(authorId: string, limit = DEFAULT_LIMIT) {
+    // Phase 2.15:二发期间老线上版保留可见(同 getFeed 的 B-path)
     const drafts = await this.prisma.draft.findMany({
-      where: { authorId, status: "PUBLISHED" },
+      where: {
+        authorId,
+        OR: [
+          { status: "PUBLISHED" },
+          { status: { in: ["DRAFT", "REVIEWING"] }, publishedBody: { not: Prisma.JsonNull } },
+        ],
+      },
       include: {
         author: { select: { id: true, handle: true } },
         lastReview: { select: { quality: true } },
