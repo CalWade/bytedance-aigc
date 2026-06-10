@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 interface Hint {
   draftId: string;
@@ -59,12 +60,12 @@ export function SafeRewriteHintBanner() {
         </span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Link href={`/drafts/${hint.draftId}`} className="btn btn-primary btn-sm" onClick={dismiss}>
-          回到草稿
-        </Link>
-        <button type="button" onClick={dismiss} className="btn btn-ghost btn-sm">
+        <Button asChild size="sm" onClick={dismiss}>
+          <Link href={`/drafts/${hint.draftId}`}>回到草稿</Link>
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={dismiss}>
           关闭
-        </button>
+        </Button>
       </div>
     </div>
   );

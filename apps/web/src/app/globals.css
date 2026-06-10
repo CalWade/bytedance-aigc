@@ -159,63 +159,6 @@
 }
 
 /* =============================================================
-   旧 utility 兼容层 (.btn / .card)
-   现有页面仍在用,C15 阶段全部替换为 shadcn 后整体删除
-   这里用新 token 表达旧 class 视觉
-   ============================================================= */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 16px;
-  height: 32px;
-  font-size: 13px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--foreground);
-  transition: all 200ms ease-out;
-  cursor: pointer;
-}
-.btn:hover {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-.btn-primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
-.btn-primary:hover {
-  background: var(--primary);
-  opacity: 0.9;
-}
-.btn-ghost {
-  background: transparent;
-  border-color: transparent;
-  color: var(--muted-foreground);
-}
-.btn-ghost:hover {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-.btn-sm {
-  height: 28px;
-  padding: 0 12px;
-  font-size: 12px;
-}
-
-.card {
-  background: var(--card);
-  color: var(--card-foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-stripe);
-}
-
-/* =============================================================
    保留:TipTap 审核高亮 (draft-editor 直接引用,不能删)
    ============================================================= */
 
