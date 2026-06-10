@@ -9,6 +9,10 @@ import {
   type ReportStatus,
 } from "@bytedance-aigc/shared";
 import { apiFetch } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface MeReportsListProps {
   initialItems: ReportDto[];
@@ -43,34 +47,30 @@ function truncate(text: string | null, max = 60): string {
   return `${text.slice(0, max)}…`;
 }
 
-function statusBadgeClass(status: ReportStatus): string {
-  return status === "PENDING"
-    ? "inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium"
-    : "inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs font-medium";
+function statusVariant(status: ReportStatus): "secondary" | "default" {
+  return status === "PENDING" ? "secondary" : "default";
 }
 
-function resolutionBadgeClass(resolution: ReportResolution): string {
+function resolutionVariant(resolution: ReportResolution): "destructive" | "secondary" | "outline" {
   switch (resolution) {
     case "OFFLINE":
-      return "inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium";
+      return "destructive";
     case "WARN":
-      return "inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium";
+      return "secondary";
     case "DISMISS":
-      return "inline-flex items-center rounded-full bg-zinc-100 text-zinc-700 px-2 py-0.5 text-xs font-medium";
+      return "outline";
   }
 }
 
-function llmBadgeClass(rec: "ALLOW" | "WARN" | "BLOCK" | null): string {
-  if (rec === null) {
-    return "inline-flex items-center rounded-full bg-zinc-100 text-zinc-500 px-2 py-0.5 text-xs font-medium";
-  }
+function llmClass(rec: "ALLOW" | "WARN" | "BLOCK" | null): string {
+  if (rec === null) return "bg-muted text-muted-foreground";
   switch (rec) {
     case "ALLOW":
-      return "inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs font-medium";
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
     case "WARN":
-      return "inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-xs font-medium";
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
     case "BLOCK":
-      return "inline-flex items-center rounded-full bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium";
+      return "bg-red-500/10 text-red-600 dark:text-red-400";
   }
 }
 
@@ -112,7 +112,7 @@ export function MeReportsList({ initialItems, initialCursor }: MeReportsListProp
   };
 
   if (items.length === 0) {
-    return <p className="text-sm text-gray-500">还没有人举报你的稿件</p>;
+    return <p className="text-sm text-muted-foreground">还没有人举报你的稿件</p>;
   }
 
   return (
@@ -121,7 +121,7 @@ export function MeReportsList({ initialItems, initialCursor }: MeReportsListProp
         {items.map((r) => {
           const offline = r.resolution === "OFFLINE";
           const titleNode = offline ? (
-            <span className="text-base font-medium line-through text-zinc-400 truncate">
+            <span className="text-base font-medium line-through text-muted-foreground truncate">
               {r.postTitle}
             </span>
           ) : (
@@ -130,49 +130,49 @@ export function MeReportsList({ initialItems, initialCursor }: MeReportsListProp
             </Link>
           );
           return (
-            <li
-              key={r.id}
-              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-sm"
-            >
+            <Card key={r.id} className="p-4 gap-2 shadow-sm">
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="min-w-0 flex-1">{titleNode}</div>
-                <span className={statusBadgeClass(r.status)}>{STATUS_LABEL[r.status]}</span>
+                <Badge variant={statusVariant(r.status)}>{STATUS_LABEL[r.status]}</Badge>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center rounded-full bg-zinc-100 text-zinc-700 px-2 py-0.5 font-medium">
-                  {REPORT_CATEGORY_LABELS[r.category]}
-                </span>
-                {r.resolution && (
-                  <span className={resolutionBadgeClass(r.resolution)}>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="outline">{REPORT_CATEGORY_LABELS[r.category]}</Badge>
+                {r.resolution ? (
+                  <Badge variant={resolutionVariant(r.resolution)}>
                     {RESOLUTION_LABEL[r.resolution]}
-                  </span>
-                )}
-                <span className={llmBadgeClass(r.llmRecommendation)}>
+                  </Badge>
+                ) : null}
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
+                    llmClass(r.llmRecommendation),
+                  )}
+                >
                   {r.llmRecommendation === null ? "复审中" : LLM_LABEL[r.llmRecommendation]}
                 </span>
-                <span className="text-zinc-500 ml-auto">
+                <span className="text-muted-foreground ml-auto">
                   {new Date(r.createdAt).toLocaleString()}
                 </span>
               </div>
-              {r.reason && (
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  {truncate(r.reason)}
-                </p>
-              )}
-            </li>
+              {r.reason ? (
+                <p className="text-sm text-muted-foreground">{truncate(r.reason)}</p>
+              ) : null}
+            </Card>
           );
         })}
       </ul>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {cursor && (
-        <button
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {cursor ? (
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => void loadMore()}
           disabled={loading}
-          className="self-center mt-2 px-4 py-2 rounded bg-zinc-100 text-sm text-zinc-700 disabled:opacity-50"
+          className="self-center mt-2"
         >
           {loading ? "加载中…" : "加载更多"}
-        </button>
-      )}
+        </Button>
+      ) : null}
     </div>
   );
 }

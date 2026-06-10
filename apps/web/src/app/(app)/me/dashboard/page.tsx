@@ -7,6 +7,7 @@ import type { AnalyticsResponse } from "@bytedance-aigc/shared";
 
 import { apiFetch, clearToken, getToken } from "@/lib/auth";
 import { QualityBadge } from "@/app/(app)/_components/QualityBadge";
+import { StatCard } from "@/components/dashboard/stat-card";
 
 type LoadState =
   | { kind: "loading" }
@@ -57,13 +58,13 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold">工作台</h1>
         <Link
           href="/me/works"
-          className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           作品列表 →
         </Link>
       </div>
-      {state.kind === "loading" && <p className="text-sm text-gray-500">加载中…</p>}
-      {state.kind === "error" && <p className="text-sm text-red-600">{state.message}</p>}
+      {state.kind === "loading" && <p className="text-sm text-muted-foreground">加载中…</p>}
+      {state.kind === "error" && <p className="text-sm text-destructive">{state.message}</p>}
       {state.kind === "ready" && <DashboardContent data={state.data} />}
     </main>
   );
@@ -74,7 +75,7 @@ function DashboardContent({ data }: { data: AnalyticsResponse }) {
   return (
     <div className="flex flex-col gap-8">
       <section>
-        <h2 className="text-sm font-medium text-zinc-500 mb-3">总览</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">总览</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="作品总数" value={totals.totalDrafts} />
           <StatCard label="已发布" value={totals.totalPublished} />
@@ -88,7 +89,7 @@ function DashboardContent({ data }: { data: AnalyticsResponse }) {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-zinc-500 mb-3">质量与互动</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">质量与互动</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatCard
             label="平均质量分"
@@ -111,13 +112,13 @@ function DashboardContent({ data }: { data: AnalyticsResponse }) {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-zinc-500 mb-3">单篇 Top 5(按互动量)</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">单篇 Top 5(按互动量)</h2>
         {topPosts.length === 0 ? (
-          <p className="text-sm text-zinc-500">还没有发布作品。</p>
+          <p className="text-sm text-muted-foreground">还没有发布作品。</p>
         ) : (
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <div className="rounded-lg border border-border overflow-hidden bg-card">
             <table className="w-full text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-500">
+              <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">标题</th>
                   <th className="px-3 py-2 text-right font-medium">质量</th>
@@ -129,7 +130,7 @@ function DashboardContent({ data }: { data: AnalyticsResponse }) {
               </thead>
               <tbody>
                 {topPosts.map((p) => (
-                  <tr key={p.id} className="border-t border-zinc-100 dark:border-zinc-800">
+                  <tr key={p.id} className="border-t border-border hover:bg-accent/30">
                     <td className="px-3 py-2">
                       <Link href={`/post/${p.id}`} className="hover:underline">
                         <span className="inline-flex items-center gap-2">
@@ -152,33 +153,6 @@ function DashboardContent({ data }: { data: AnalyticsResponse }) {
           </div>
         )}
       </section>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  suffix,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: number | string;
-  suffix?: string;
-  hint?: string;
-  tone?: "default" | "warn";
-}) {
-  const valueCls =
-    tone === "warn" ? "text-amber-600 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-100";
-  return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className={`text-2xl font-semibold mt-1 ${valueCls}`}>
-        {value}
-        {suffix && <span className="text-sm font-normal text-zinc-500 ml-1">{suffix}</span>}
-      </div>
-      {hint && <div className="text-[11px] text-zinc-400 mt-0.5">{hint}</div>}
     </div>
   );
 }
