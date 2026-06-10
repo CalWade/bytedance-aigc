@@ -4,7 +4,7 @@ import { SiteMasthead } from "@/components/site-masthead";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-  title: "炽 · AI 创作者辅助生产与分发平台",
+  title: "AI 创作者辅助生产与分发平台",
   description: "双轨创作 · 五阶段审核 · 双榜分发 · 为创作者打造的 AI 写作与发布工作台",
 };
 

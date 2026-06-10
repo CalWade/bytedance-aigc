@@ -70,10 +70,10 @@ export function SiteMasthead() {
       {/* Row 1: Logo + 搜索 + 通知/头像 */}
       <div className="max-w-[1200px] mx-auto px-5 h-14 flex items-center gap-6">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--brand)] text-white text-[15px] font-bold leading-none">
-            炽
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--brand)] text-white text-[12px] font-bold leading-none">
+            AI
           </span>
-          <span className="text-[15px] font-medium text-[var(--text)]">创作平台</span>
+          <span className="text-[15px] font-medium text-[var(--text)]">创作者平台</span>
         </Link>
 
         <div className="flex-1 max-w-[480px]">
