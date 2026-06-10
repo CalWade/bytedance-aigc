@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { PostDetailDto } from "@bytedance-aigc/shared";
 import { serverFetchJson } from "@/lib/server-fetch";
 import { ReportButton } from "@/components/post/ReportButton";
-import { QualityBadge } from "@/app/_components/QualityBadge";
+import { QualityBadge } from "@/app/(app)/_components/QualityBadge";
 
 export const dynamic = "force-dynamic";
 

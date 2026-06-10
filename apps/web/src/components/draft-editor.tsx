@@ -18,13 +18,13 @@ import { RepublishBanner } from "./republish-banner";
 import { SaveStatus } from "./save-status";
 import { TiptapBody } from "./tiptap-body";
 import { VersionHistoryModal } from "./version-history-modal";
-import { FastModeDialog } from "@/app/drafts/[id]/_components/FastModeDialog";
-import { OutlinePanel } from "@/app/drafts/[id]/_components/OutlinePanel";
-import { SectionStream } from "@/app/drafts/[id]/_components/SectionStream";
-import { AiBubbleMenu } from "@/app/drafts/[id]/_components/AiBubbleMenu";
-import { ToolCandidateCard } from "@/app/drafts/[id]/_components/ToolCandidateCard";
-import { PromptDrawer } from "@/app/drafts/[id]/_components/PromptDrawer";
-import { PreflightDialog } from "@/app/drafts/[id]/_components/PreflightDialog";
+import { FastModeDialog } from "@/app/(app)/drafts/[id]/_components/FastModeDialog";
+import { OutlinePanel } from "@/app/(app)/drafts/[id]/_components/OutlinePanel";
+import { SectionStream } from "@/app/(app)/drafts/[id]/_components/SectionStream";
+import { AiBubbleMenu } from "@/app/(app)/drafts/[id]/_components/AiBubbleMenu";
+import { ToolCandidateCard } from "@/app/(app)/drafts/[id]/_components/ToolCandidateCard";
+import { PromptDrawer } from "@/app/(app)/drafts/[id]/_components/PromptDrawer";
+import { PreflightDialog } from "@/app/(app)/drafts/[id]/_components/PreflightDialog";
 
 interface DraftDetail {
   id: string;

@@ -1,6 +1,6 @@
 "use client";
 import type { ReviewSafety, ReviewQuality, SafetyKey } from "@bytedance-aigc/shared";
-import { QualityBadge } from "@/app/_components/QualityBadge";
+import { QualityBadge } from "@/app/(app)/_components/QualityBadge";
 
 const SAFETY_LABEL: Record<string, string> = {
   pornography: "涉黄",

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { AnalyticsResponse } from "@bytedance-aigc/shared";
 
 import { apiFetch, clearToken, getToken } from "@/lib/auth";
-import { QualityBadge } from "@/app/_components/QualityBadge";
+import { QualityBadge } from "@/app/(app)/_components/QualityBadge";
 
 type LoadState =
   | { kind: "loading" }
