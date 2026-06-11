@@ -7,6 +7,7 @@
     "./components/*": "./src/components/*.tsx",
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./components/feed/*": "./src/components/feed/*.tsx",
+    "./components/feed/external-trending-types": "./src/components/feed/external-trending-types.ts",
     "./components/post/*": "./src/components/post/*.tsx",
     "./components/dashboard/*": "./src/components/dashboard/*.tsx",
     "./components/shell/*": "./src/components/shell/*.tsx",
