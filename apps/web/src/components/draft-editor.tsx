@@ -25,6 +25,7 @@ import { ToolCandidateCard } from "@/app/(creator)/drafts/[id]/_components/ToolC
 import { PromptDrawer } from "@/app/(creator)/drafts/[id]/_components/PromptDrawer";
 import { PreflightDialog } from "@/app/(creator)/drafts/[id]/_components/PreflightDialog";
 import { ReviewDrawer } from "@/app/(creator)/drafts/[id]/_components/ReviewDrawer";
+import { AssetPicker } from "./asset-picker";
 
 interface DraftDetail {
   id: string;
@@ -86,15 +87,11 @@ export function DraftEditor({
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [namingNote, setNamingNote] = useState(false);
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
 
   const [toolBusy, setToolBusy] = useState<DraftToolType | null>(null);
   const [toolError, setToolError] = useState<string | null>(null);
   const [toolPanel, setToolPanel] = useState<ToolPanel | null>(null);
-
-  // 图片上传状态（从 TiptapBody 上提）
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<React.RefObject<HTMLInputElement | null>>({ current: null });
 
   const { otherTabExists } = useDraftPresence(id);
 
@@ -427,9 +424,7 @@ export function DraftEditor({
         onMarkVersion={() => void markVersion()}
         onOpenPromptDrawer={() => setPromptDrawerOpen(true)}
         namingNote={namingNote}
-        onUploadImage={() => fileInputRef.current?.current?.click()}
-        uploading={uploading}
-        uploadError={uploadError}
+        onOpenAssetPicker={() => setAssetPickerOpen(true)}
         onSave={() => void flush()}
         saving={status === "saving"}
       />
@@ -460,18 +455,7 @@ export function DraftEditor({
       )}
 
       <div className="mx-auto w-full max-w-prose px-6 flex-1 flex flex-col">
-        <TiptapBody
-          initial={body}
-          onChange={setBody}
-          onReady={setEditor}
-          onFileInputRef={(ref) => {
-            fileInputRef.current = ref;
-          }}
-          onUploadState={(up, err) => {
-            setUploading(up);
-            setUploadError(err);
-          }}
-        />
+        <TiptapBody initial={body} onChange={setBody} onReady={setEditor} />
       </div>
 
       <AiBubbleMenu editor={editor} onInvoke={invokeTool} />
@@ -520,6 +504,16 @@ export function DraftEditor({
         open={versionHistoryOpen}
         onClose={() => setVersionHistoryOpen(false)}
         onRestored={handleRestored}
+      />
+
+      <AssetPicker
+        open={assetPickerOpen}
+        onClose={() => setAssetPickerOpen(false)}
+        onSelect={(url) => {
+          if (editor) {
+            editor.chain().focus().setImage({ src: url }).run();
+          }
+        }}
       />
     </div>
   );

@@ -42,9 +42,7 @@ interface EditorToolbarProps {
   onMarkVersion: () => void;
   onOpenPromptDrawer: () => void;
   namingNote: boolean;
-  onUploadImage: () => void;
-  uploading: boolean;
-  uploadError: string | null;
+  onOpenAssetPicker: () => void;
   onSave: () => void;
   saving: boolean;
 }
@@ -65,9 +63,7 @@ export function EditorToolbar({
   onMarkVersion,
   onOpenPromptDrawer,
   namingNote,
-  onUploadImage,
-  uploading,
-  uploadError,
+  onOpenAssetPicker,
   onSave,
   saving,
 }: EditorToolbarProps) {
@@ -141,8 +137,7 @@ export function EditorToolbar({
           <button
             type="button"
             className={fmtBtnClass(false)}
-            disabled={uploading}
-            onClick={onUploadImage}
+            onClick={onOpenAssetPicker}
             aria-label="插入图片"
           >
             <ImageIcon className="h-4 w-4" />
@@ -222,8 +217,6 @@ export function EditorToolbar({
         <Button size="sm" onClick={onOpenPreflight} className="h-8 text-[13px]">
           发布
         </Button>
-
-        {uploadError && <span className="text-[12px] text-destructive">{uploadError}</span>}
       </div>
     </header>
   );
