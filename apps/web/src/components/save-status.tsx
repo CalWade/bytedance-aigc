@@ -32,21 +32,35 @@ export function SaveStatus({ status, lastSavedAt, onRetry }: SaveStatusProps) {
 
   if (status === "error") {
     return (
-      <button type="button" onClick={onRetry} className="text-sm text-red-600 hover:underline">
+      <button
+        type="button"
+        onClick={onRetry}
+        className="text-[13px] text-destructive hover:underline"
+      >
         保存失败,点这里重试
       </button>
     );
   }
-  if (status === "saving") return <span className="text-sm text-zinc-500">保存中…</span>;
-  if (status === "dirty") return <span className="text-sm text-zinc-500">未保存的更改</span>;
+  if (status === "saving")
+    return <span className="text-[13px] text-muted-foreground">保存中…</span>;
+  if (status === "dirty")
+    return <span className="text-[13px] text-muted-foreground">未保存的更改</span>;
   if (status === "offline") {
-    return <span className="text-sm text-amber-600">未保存(离线中)</span>;
+    return <span className="text-[13px] text-amber-500 dark:text-amber-400">未保存(离线中)</span>;
   }
   if (status === "conflict") {
-    return <span className="text-sm text-amber-600">他端已修改,已为你保留冲突备份</span>;
+    return (
+      <span className="text-[13px] text-amber-500 dark:text-amber-400">
+        他端已修改,已为你保留冲突备份
+      </span>
+    );
   }
   if (status === "saved" && lastSavedAt !== null) {
-    return <span className="text-sm text-zinc-500">已保存 · {relativeTime(lastSavedAt, now)}</span>;
+    return (
+      <span className="text-[13px] text-muted-foreground">
+        已保存 · {relativeTime(lastSavedAt, now)}
+      </span>
+    );
   }
   return null;
 }

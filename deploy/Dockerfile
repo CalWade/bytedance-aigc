@@ -45,6 +45,7 @@ COPY --from=build /app/pnpm-workspace.yaml pnpm-workspace.yaml
 
 # Built artifacts
 COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/packages/shared/rules packages/shared/rules
 COPY --from=build /app/apps/api/dist apps/api/dist
 COPY --from=build /app/apps/api/prisma apps/api/prisma
 

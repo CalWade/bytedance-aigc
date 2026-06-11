@@ -62,5 +62,16 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     const token = getToken();
     if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
   }
-  return fetch(`${apiBaseUrl()}${path}`, { ...rest, headers: finalHeaders });
+  const url = `${apiBaseUrl()}${path}`;
+
+  // 后端冷启动时可能还没就绪，连接失败自动重试
+  const maxRetries = 3;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, { ...rest, headers: finalHeaders });
+    } catch (err) {
+      if (attempt >= maxRetries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
 }

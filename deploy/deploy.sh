@@ -44,10 +44,16 @@ if ! "$SKIP_BUILD"; then
     cd "$PROJECT_ROOT" && NEXT_PUBLIC_API_BASE_URL=https://041105.best/api pnpm --filter @bytedance-aigc/web build
   fi
 
-  echo "==> 3/4 Copying static assets into standalone..."
+  echo "==> 3/4 Copying static & public assets into standalone..."
   if ! "$DRY_RUN"; then
     SRC="$PROJECT_ROOT/apps/web/.next/static"
     DST="$PROJECT_ROOT/apps/web/.next/standalone/apps/web/.next/static"
+    rm -rf "$DST"
+    cp -r "$SRC" "$DST"
+    echo "   $SRC → $DST"
+
+    SRC="$PROJECT_ROOT/apps/web/public"
+    DST="$PROJECT_ROOT/apps/web/.next/standalone/apps/web/public"
     rm -rf "$DST"
     cp -r "$SRC" "$DST"
     echo "   $SRC → $DST"

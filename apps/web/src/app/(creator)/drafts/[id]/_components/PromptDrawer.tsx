@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PROMPT_DRAWER_TOOLS, type DraftToolType } from "@bytedance-aigc/shared";
+import { PROMPT_DRAWER_TOOLS, DRAFT_TOOL_LABELS, type DraftToolType } from "@bytedance-aigc/shared";
 
 import { apiFetch } from "@bytedance-aigc/ui/lib/auth";
 import { useActivePromptId } from "@bytedance-aigc/ui/hooks/use-active-prompt-id";
@@ -11,6 +11,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@bytedance-aigc/ui/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@bytedance-aigc/ui/components/ui/select";
 
 interface PromptItem {
   id: string;
@@ -111,20 +118,21 @@ export function PromptDrawer({ open, onClose }: PromptDrawerProps) {
         </SheetHeader>
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex flex-col gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <span>工具:</span>
-              <select
-                value={tool}
-                onChange={(e) => setTool(e.target.value as DraftToolType)}
-                className="rounded border border-input bg-transparent px-2 py-1"
-              >
-                {PROMPT_DRAWER_TOOLS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">工具:</span>
+              <Select value={tool} onValueChange={(v) => setTool(v as DraftToolType)}>
+                <SelectTrigger size="sm" className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROMPT_DRAWER_TOOLS.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {DRAFT_TOOL_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="flex gap-2 text-sm border-b border-border">
               <button

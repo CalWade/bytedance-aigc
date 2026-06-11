@@ -62,7 +62,16 @@ export class AssetsService {
       throw new BadRequestException(`file too large: ${file.size} > ${MAX_BYTES}`);
     }
 
-    // PRD §4.6.1 入库时合规校验
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const ext = MIME_EXT[file.mimetype] ?? "bin";
+    const key = `users/${userId}/${yyyy}/${mm}/${randomUUID()}.${ext}`;
+
+    // 先上传拿到 URL，供 GuardClient 图片内容审核使用
+    const { url } = await this.storage.put(key, file.buffer, file.mimetype);
+
+    // PRD §4.6.1 入库时合规校验（双层：GuardClient 图片内容 + LLM 元信息启发式）
     const review = await this.reviewService.reviewAsset({
       mime: file.mimetype,
       filename: file.originalname ?? "",
@@ -71,19 +80,12 @@ export class AssetsService {
       aiGenerated: false,
       aiDeclared: opts?.aiDeclared ?? false,
       stage: "INGEST",
+      imageUrl: url,
     });
 
     if (review.recommendation === "BLOCK") {
       throw new BadRequestException(`素材合规校验未通过: ${review.reason}`);
     }
-
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const ext = MIME_EXT[file.mimetype] ?? "bin";
-    const key = `users/${userId}/${yyyy}/${mm}/${randomUUID()}.${ext}`;
-
-    const { url } = await this.storage.put(key, file.buffer, file.mimetype);
 
     const reviewStatus = this.reviewService.recommendationToStatus(review.recommendation);
     const asset = await this.prisma.asset.create({
@@ -205,6 +207,17 @@ export class AssetsService {
     });
   }
 
+  async remove(userId: string, assetId: string): Promise<void> {
+    const asset = await this.prisma.asset.findUnique({ where: { id: assetId } });
+    if (!asset) {
+      throw new NotFoundException(`Asset ${assetId} not found`);
+    }
+    if (asset.userId !== userId) {
+      throw new ForbiddenException("Not your asset");
+    }
+    await this.prisma.asset.delete({ where: { id: assetId } });
+  }
+
   async recommendForBody(userId: string, body: string, topN = 6): Promise<AssetWithScore[]> {
     const assets = await this.prisma.asset.findMany({
       where: { userId },
@@ -251,6 +264,7 @@ export class AssetsService {
       aiGenerated: asset.aiGenerated,
       aiDeclared: asset.aiGenerated,
       stage: "PRE_INSERT",
+      imageUrl: asset.url,
     });
   }
 }

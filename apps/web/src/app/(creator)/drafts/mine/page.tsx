@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-
-import { apiFetch, clearToken, getToken, getUser } from "@bytedance-aigc/ui/lib/auth";
+import { Plus } from "lucide-react";
+import { apiFetch, clearToken, getToken } from "@bytedance-aigc/ui/lib/auth";
+import { Button } from "@bytedance-aigc/ui/components/ui/button";
+import { Card } from "@bytedance-aigc/ui/components/ui/card";
 
 interface DraftItem {
   id: string;
@@ -17,14 +19,12 @@ interface DraftItem {
 
 type LoadState =
   | { kind: "loading" }
-  | { kind: "ready"; drafts: DraftItem[]; handle: string | null }
+  | { kind: "ready"; drafts: DraftItem[] }
   | { kind: "error"; message: string };
 
 export default function MyDraftsPage() {
-  // useSearchParams 在 Next.js 16 静态预渲染时强制要求 Suspense 边界。
-  // 这页本来就 100% 客户端(看 token / handle),Suspense fallback 体验等价。
   return (
-    <Suspense fallback={<main className="px-6 py-10 text-sm text-zinc-500">加载中…</main>}>
+    <Suspense fallback={<div className="px-5 py-5 text-[14px] text-muted-foreground">加载中…</div>}>
       <MyDraftsPageInner />
     </Suspense>
   );
@@ -38,13 +38,12 @@ function MyDraftsPageInner() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   // 来自抖音热榜「以此选题创作」:?topic=xxx&source=douyin-hot
-  // 自动建草稿 → 跳详情页并打开 FAST Dialog,只触发一次,失败回退为列表态。
   const autoCreatedRef = useRef(false);
   useEffect(() => {
     const topic = searchParams.get("topic");
     const source = searchParams.get("source");
     if (!topic || autoCreatedRef.current) return;
-    if (!getToken()) return; // 让下面那个 effect 处理重定向
+    if (!getToken()) return;
     autoCreatedRef.current = true;
     void (async () => {
       try {
@@ -79,7 +78,6 @@ function MyDraftsPageInner() {
       window.location.replace("/login");
       return;
     }
-    const handle = getUser()?.handle ?? null;
     let cancelled = false;
     void apiFetch("/drafts/mine")
       .then(async (res) => {
@@ -94,16 +92,20 @@ function MyDraftsPageInner() {
           return;
         }
         const allDrafts = (await res.json()) as DraftItem[];
-        // Phase 2.4:fixtures 扩展后 /drafts/mine 会包含 PUBLISHED,本页面只展示 DRAFT 态
         const drafts = allDrafts.filter((d) => d.status !== "PUBLISHED");
         if (cancelled) return;
-        setState({ kind: "ready", drafts, handle });
+        setState({ kind: "ready", drafts });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         setState({
           kind: "error",
-          message: err instanceof Error ? err.message : "网络错误",
+          message:
+            err instanceof TypeError && err.message.includes("fetch")
+              ? "无法连接 API 服务，请确认后端已在 :4000 端口启动"
+              : err instanceof Error
+                ? err.message
+                : "网络错误",
         });
       });
     return () => {
@@ -135,82 +137,90 @@ function MyDraftsPageInner() {
       const draft = (await res.json()) as { id: string };
       router.push(`/drafts/${draft.id}`);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "网络错误");
+      setCreateError(
+        err instanceof TypeError && err.message.includes("fetch")
+          ? "无法连接 API 服务，请确认后端已在 :4000 端口启动"
+          : err instanceof Error
+            ? err.message
+            : "网络错误",
+      );
     } finally {
       setCreating(false);
     }
   }
 
-  function onLogout() {
-    clearToken();
-    window.location.replace("/login");
-  }
-
   return (
-    <main className="flex flex-1 flex-col gap-6 px-6 py-10 max-w-3xl w-full mx-auto">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">我的草稿</h1>
-          {state.kind === "ready" && state.handle && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              已登录：<span className="font-mono">{state.handle}</span>
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCreate}
-            disabled={creating}
-            className="rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 transition-colors"
-          >
-            {creating ? "创建中…" : "新建草稿"}
-          </button>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            退出登录
-          </button>
-        </div>
-      </header>
+    <div className="max-w-[1200px] mx-auto px-5 py-5">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-[20px] font-medium text-foreground">我的草稿</h1>
+        <Button size="sm" onClick={onCreate} disabled={creating}>
+          <Plus className="h-4 w-4 mr-1" aria-hidden />
+          {creating ? "创建中…" : "新建草稿"}
+        </Button>
+      </div>
 
-      {createError && <p className="text-sm text-red-600">{createError}</p>}
-      {state.kind === "loading" && <p className="text-sm text-zinc-500">加载中…</p>}
-      {state.kind === "error" && <p className="text-sm text-red-600">{state.message}</p>}
-      {state.kind === "ready" && state.drafts.length === 0 && (
-        <p className="text-sm text-zinc-500">还没有草稿。</p>
+      {createError && (
+        <Card className="p-4 mb-4 border-destructive/50 text-[14px] text-destructive">
+          {createError}
+        </Card>
       )}
+
+      {state.kind === "loading" && (
+        <p className="text-[14px] text-muted-foreground py-8 text-center">加载中…</p>
+      )}
+
+      {state.kind === "error" && (
+        <Card className="p-8 text-center">
+          <p className="text-[15px] text-destructive">{state.message}</p>
+          <p className="text-[12px] text-muted-foreground/70 mt-1">
+            请确认 API 服务已在 :4000 端口启动
+          </p>
+        </Card>
+      )}
+
+      {state.kind === "ready" && state.drafts.length === 0 && (
+        <Card className="p-8 text-center">
+          <p className="text-[15px] text-muted-foreground">还没有草稿</p>
+          <p className="text-[13px] text-muted-foreground/70 mt-1">
+            点击右上角「新建草稿」开始创作
+          </p>
+        </Card>
+      )}
+
       {state.kind === "ready" && state.drafts.length > 0 && (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {state.drafts.map((d) => (
             <li key={d.id}>
-              <Link
-                href={`/drafts/${d.id}`}
-                className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-              >
-                <div className="flex flex-col gap-1 min-w-0">
-                  <h2 className="text-base font-medium truncate">{d.title}</h2>
-                  <p className="text-xs text-zinc-500 font-mono truncate">{d.id}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={
-                      d.mode === "FAST"
-                        ? "inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-xs font-medium"
-                        : "inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-xs font-medium"
-                    }
-                  >
-                    {d.mode}
-                  </span>
-                  <span className="text-xs text-zinc-500">v{d.version}</span>
-                </div>
+              <Link href={`/drafts/${d.id}`}>
+                <Card className="px-4 py-3 hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-[14px] font-medium truncate text-foreground">
+                        {d.title}
+                      </span>
+                      <span className="text-[12px] text-muted-foreground font-mono truncate">
+                        {d.id}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={
+                          d.mode === "FAST"
+                            ? "inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-medium"
+                            : "inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-[11px] font-medium"
+                        }
+                      >
+                        {d.mode}
+                      </span>
+                      <span className="text-[12px] text-muted-foreground">v{d.version}</span>
+                    </div>
+                  </div>
+                </Card>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

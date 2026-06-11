@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { ImagePlus, Sparkles, UploadCloud } from "lucide-react";
+import {
+  ImagePlus,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { apiFetch, clearToken, getToken } from "@bytedance-aigc/ui/lib/auth";
-import { uploadImage } from "@bytedance-aigc/ui/lib/upload-image";
+import { uploadImageWithReview } from "@bytedance-aigc/ui/lib/upload-image";
+import type { UploadReviewResult } from "@bytedance-aigc/ui/lib/upload-image";
 import { Button } from "@bytedance-aigc/ui/components/ui/button";
 import {
   Dialog,
@@ -34,6 +43,7 @@ interface AssetItem {
   url: string;
   mime: string;
   size: number;
+  reviewStatus?: string;
   aiGenerated?: boolean;
   aiPrompt?: string;
   sceneTags?: string[];
@@ -105,6 +115,8 @@ export default function AssetsPage() {
   const [prompt, setPrompt] = React.useState("");
   const [generating, setGenerating] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
+  const [uploadReview, setUploadReview] = React.useState<UploadReviewResult | null>(null);
+  const [deleting, setDeleting] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const loadCountRef = React.useRef(0);
 
@@ -183,10 +195,18 @@ export default function AssetsPage() {
       return;
     }
     setUploading(true);
+    setUploadReview(null);
     try {
-      await uploadImage(file);
-      toast.success("上传成功");
+      const result = await uploadImageWithReview(file);
+      setUploadReview(result);
       await loadAssets();
+      if (result.reviewStatus === "PASSED") {
+        toast.success("上传成功，合规校验通过");
+      } else if (result.reviewStatus === "WARNED") {
+        toast.warning("上传成功，但命中合规警告");
+      } else {
+        toast.error(result.reviewMessage);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "上传失败");
     } finally {
@@ -200,17 +220,42 @@ export default function AssetsPage() {
    */
   async function adoptStock(item: StockItem) {
     setUploading(true);
+    setUploadReview(null);
     try {
       const blobRes = await fetch(item.url);
       const blob = await blobRes.blob();
       const file = new File([blob], `${item.id}.webp`, { type: blob.type || "image/webp" });
-      await uploadImage(file);
-      toast.success(`已加入素材:${item.title}`);
+      const result = await uploadImageWithReview(file);
+      setUploadReview(result);
       await loadAssets();
+      if (result.reviewStatus === "PASSED") {
+        toast.success(`已加入素材: ${item.title}`);
+      } else if (result.reviewStatus === "WARNED") {
+        toast.warning(`已加入素材，但命中合规警告: ${item.title}`);
+      } else {
+        toast.error(result.reviewMessage);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "保存失败");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDelete(assetId: string) {
+    setDeleting(assetId);
+    try {
+      const res = await apiFetch(`/assets/${assetId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("已删除");
+        await loadAssets();
+      } else {
+        toast.error("删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -256,6 +301,15 @@ export default function AssetsPage() {
               <Sparkles className="h-4 w-4" aria-hidden />
               AI 生图
             </Button>
+
+            {/* 上传审核结果 */}
+            {uploadReview && (
+              <UploadReviewBanner
+                reviewStatus={uploadReview.reviewStatus}
+                message={uploadReview.reviewMessage}
+                onDismiss={() => setUploadReview(null)}
+              />
+            )}
 
             <div className="flex items-center gap-2 ml-auto">
               <Select
@@ -306,7 +360,7 @@ export default function AssetsPage() {
               {state.items.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
+                  className="rounded-lg border border-border bg-card overflow-hidden shadow-sm relative"
                 >
                   <div className="aspect-square bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -316,12 +370,35 @@ export default function AssetsPage() {
                       className="w-full h-full object-cover"
                     />
                   </div>
+                  {item.reviewStatus === "WARNED" && (
+                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/90 text-white">
+                      警告
+                    </span>
+                  )}
+                  {item.reviewStatus === "PASSED" && (
+                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/90 text-white">
+                      通过
+                    </span>
+                  )}
                   <div className="p-2 flex flex-col gap-1">
-                    {item.aiGenerated ? (
-                      <span className="inline-block w-fit text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5">
-                        AI 生成
-                      </span>
-                    ) : null}
+                    <div className="flex items-center justify-between">
+                      {item.aiGenerated ? (
+                        <span className="inline-block w-fit text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5">
+                          AI 生成
+                        </span>
+                      ) : (
+                        <span />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deleting === item.id}
+                        className="p-1 rounded hover:bg-destructive/10 transition disabled:opacity-50"
+                        aria-label="删除"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-1">
                       {(item.sceneTags ?? []).map((t) => (
                         <span
@@ -430,5 +507,58 @@ export default function AssetsPage() {
         </DialogContent>
       </Dialog>
     </main>
+  );
+}
+
+/** 统一的审核结果展示条 */
+function UploadReviewBanner({
+  reviewStatus,
+  message,
+  onDismiss,
+}: {
+  reviewStatus: string;
+  message: string;
+  onDismiss: () => void;
+}) {
+  const isAllow = reviewStatus === "PASSED";
+  const isBlock = reviewStatus === "BLOCKED";
+
+  const icon = isAllow ? (
+    <ShieldCheck className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
+  ) : (
+    <ShieldAlert
+      className={`h-4 w-4 mt-0.5 shrink-0 ${isBlock ? "text-red-500" : "text-amber-500"}`}
+    />
+  );
+
+  const bg = isAllow
+    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900"
+    : isBlock
+      ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900"
+      : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900";
+
+  const text = isAllow
+    ? "text-emerald-700 dark:text-emerald-300"
+    : isBlock
+      ? "text-red-700 dark:text-red-300"
+      : "text-amber-700 dark:text-amber-300";
+
+  return (
+    <div className={`flex items-start gap-2 rounded-md border px-3 py-2 ${bg}`}>
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium ${text}`}>
+          {isAllow ? "合规校验通过" : isBlock ? "素材已被拦截" : "合规警告"}
+        </p>
+        <p className={`text-xs mt-0.5 ${text} opacity-80`}>{message}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="p-1 rounded hover:bg-foreground/10 transition shrink-0"
+      >
+        <X className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+    </div>
   );
 }

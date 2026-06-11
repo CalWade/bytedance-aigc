@@ -5,6 +5,7 @@ import { App } from "supertest/types";
 
 import { AppModule } from "./../src/app.module";
 import { LlmClient } from "./../src/llm/llm.client";
+import { GuardClient } from "./../src/llm/guard.client";
 import { PrismaService } from "./../src/prisma/prisma.service";
 import { applyAllFixtures, cleanupAllFixtures } from "./../prisma/fixtures";
 import { loginAsAdmin, loginAsDemo } from "./helpers/auth";
@@ -59,6 +60,7 @@ describe("Phase 2.22 — asset review (e2e)", () => {
   let demoToken: string;
   let adminToken: string;
   const llmChatMock = jest.fn();
+  const guardModerateMock = jest.fn();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -66,6 +68,8 @@ describe("Phase 2.22 — asset review (e2e)", () => {
     })
       .overrideProvider(LlmClient)
       .useValue({ chat: llmChatMock, chatStream: jest.fn() })
+      .overrideProvider(GuardClient)
+      .useValue({ moderate: guardModerateMock })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -90,7 +94,10 @@ describe("Phase 2.22 — asset review (e2e)", () => {
     await app.close();
   });
 
-  beforeEach(() => llmChatMock.mockReset());
+  beforeEach(() => {
+    llmChatMock.mockReset();
+    guardModerateMock.mockReset().mockResolvedValue({ suggestion: "pass", details: [] });
+  });
 
   it("upload 正常图片 → 201 + reviewStatus=PASSED", async () => {
     llmChatMock.mockResolvedValue(ALLOW_JSON);

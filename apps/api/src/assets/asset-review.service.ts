@@ -2,6 +2,12 @@ import { Injectable, Logger } from "@nestjs/common";
 import type { AssetReviewStatus } from "@prisma/client";
 
 import { LlmClient } from "../llm/llm.client";
+import {
+  GuardClient,
+  mapGuardLabelsToSensitive,
+  mapGuardLevelToSeverity,
+} from "../llm/guard.client";
+import type { GuardDetail, GuardResult } from "../llm/guard.client";
 import { PromptsService } from "../prompts/prompts.service";
 
 export type ReviewStage = "INGEST" | "PRE_INSERT";
@@ -33,6 +39,7 @@ export class AssetReviewService {
   constructor(
     private readonly prompts: PromptsService,
     private readonly llm: LlmClient,
+    private readonly guard: GuardClient,
   ) {}
 
   /**
@@ -48,12 +55,25 @@ export class AssetReviewService {
     aiGenerated: boolean;
     aiDeclared: boolean;
     stage: ReviewStage;
+    imageUrl?: string;
   }): Promise<AssetReviewResult> {
     const fallback = (note: string): AssetReviewResult => {
       this.logger.warn(`reviewAsset fallback: ${note}`);
       return { recommendation: "ALLOW", dimensions: [], reason: note };
     };
 
+    // ── 第一层：GuardClient 图片内容审核 ──
+    let guardDimensions: ReviewDimension[] = [];
+    if (params.imageUrl) {
+      try {
+        const guardResult = await this.moderateImage(params.imageUrl);
+        guardDimensions = this.guardResultToDimensions(guardResult);
+      } catch (err) {
+        this.logger.warn(`GuardClient 图片审核失败: ${(err as Error).message}`);
+      }
+    }
+
+    // ── 第二层：LLM 元信息启发式审核 ──
     // 构造 user message:元信息摘要给 LLM 做文本启发式推断
     const meta = [
       `MIME: ${params.mime}`,
@@ -117,8 +137,12 @@ export class AssetReviewService {
       }
     }
 
-    const hasHigh = dimensions.some((d) => d.severity === "high");
-    const hasMedium = dimensions.some((d) => d.severity === "medium");
+    // 合并两层审核维度（去重：GuardClient 维度优先）
+    const guardKeys = new Set(guardDimensions.map((d) => d.key));
+    const merged = [...guardDimensions, ...dimensions.filter((d) => !guardKeys.has(d.key))];
+
+    const hasHigh = merged.some((d) => d.severity === "high");
+    const hasMedium = merged.some((d) => d.severity === "medium");
 
     let recommendation: "ALLOW" | "WARN" | "BLOCK";
     if (params.stage === "INGEST") {
@@ -129,19 +153,41 @@ export class AssetReviewService {
       recommendation = hasHigh || hasMedium ? "WARN" : "ALLOW";
     }
 
-    const hitDimensions = dimensions.filter(
-      (d) => d.severity === "high" || d.severity === "medium",
-    );
+    const hitDimensions = merged.filter((d) => d.severity === "high" || d.severity === "medium");
     const reason =
       recommendation === "ALLOW"
         ? "合规校验通过"
         : `命中 ${hitDimensions.map((d) => d.key).join("/")} 维度,建议${recommendation === "BLOCK" ? "拦截" : "警告"}。`;
 
     this.logger.log(
-      `reviewAsset stage=${params.stage} rec=${recommendation} dims=${dimensions.map((d) => `${d.key}=${d.severity}`).join(",")}`,
+      `reviewAsset stage=${params.stage} rec=${recommendation} dims=${merged.map((d) => `${d.key}=${d.severity}`).join(",")}`,
     );
 
-    return { recommendation, dimensions, reason };
+    return { recommendation, dimensions: merged, reason };
+  }
+
+  /** 调用 GuardClient 对图片 URL 做内容审核 */
+  private async moderateImage(imageUrl: string): Promise<GuardResult> {
+    this.logger.log(`GuardClient 图片审核开始: imageUrl=${imageUrl}`);
+    const result = await this.guard.moderate("", "query_security_check_pro", { imageUrl });
+    this.logger.log(
+      `GuardClient 图片审核完成: suggestion=${result.suggestion} details=${result.details.length}`,
+    );
+    return result;
+  }
+
+  /** 将 GuardClient 审核结果转为 ReviewDimension 数组 */
+  private guardResultToDimensions(result: GuardResult): ReviewDimension[] {
+    if (result.suggestion === "pass") return [];
+
+    return result.details
+      .filter((d: GuardDetail) => d.suggestion !== "pass" && d.level !== "none")
+      .map((d: GuardDetail) => ({
+        key: d.labels.length > 0 ? d.labels[0] : d.type,
+        score: Math.round(d.confidence * 100),
+        severity: mapGuardLevelToSeverity(d.level),
+        reason: d.labels.join(", ") || d.type,
+      }));
   }
 
   /** 将 recommendation 映射到 Asset.reviewStatus 枚举 */

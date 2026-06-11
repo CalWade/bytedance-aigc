@@ -131,20 +131,22 @@ export class GuardClient {
   async moderate(
     content: string,
     service: GuardService = "query_security_check_pro",
-    opts?: { chatId?: string; sessionId?: string; done?: boolean },
+    opts?: { chatId?: string; sessionId?: string; done?: boolean; imageUrl?: string },
   ): Promise<GuardResult> {
     if (this.mockMode) {
       return { suggestion: "pass", details: [] };
     }
 
+    const params: Record<string, unknown> = {};
+    if (content) params.content = content;
+    if (opts?.imageUrl) params.imageUrl = opts.imageUrl;
+    if (opts?.chatId) params.chatId = opts.chatId;
+    if (opts?.sessionId) params.sessionId = opts.sessionId;
+    if (opts?.done !== undefined) params.done = opts.done;
+
     const request = new Green20220302.MultiModalGuardRequest({
       service,
-      serviceParameters: JSON.stringify({
-        content,
-        ...(opts?.chatId && { chatId: opts.chatId }),
-        ...(opts?.sessionId && { sessionId: opts.sessionId }),
-        ...(opts?.done !== undefined && { done: opts.done }),
-      }),
+      serviceParameters: JSON.stringify(params),
     });
 
     const runtime = new Util.RuntimeOptions({

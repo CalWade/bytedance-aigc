@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -107,5 +108,11 @@ export class AssetsController {
   @Post(":id/check-for-insert")
   async checkForInsert(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.assets.checkForInsert(user.sub, id);
+  }
+
+  @Delete(":id")
+  async remove(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    await this.assets.remove(user.sub, id);
+    return { ok: true };
   }
 }

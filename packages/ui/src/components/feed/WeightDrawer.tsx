@@ -114,7 +114,7 @@ export function WeightDrawer() {
 
         <div className="px-5 py-4 border-t border-border flex items-center gap-2">
           <Button type="button" onClick={() => commit(w)} className="flex-1">
-            付印
+            保存
           </Button>
           <Button type="button" variant="outline" onClick={() => commit(DEFAULT_FEED_WEIGHTS)}>
             恢复默认

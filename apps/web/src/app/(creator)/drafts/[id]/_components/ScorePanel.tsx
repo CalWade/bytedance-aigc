@@ -6,9 +6,9 @@ const SAFETY_LABEL: Record<string, string> = {
   pornography: "涉黄",
   gambling: "涉赌",
   drugs: "涉毒",
-  politics: "政治敏感",
-  vulgarity: "低俗内容",
-  false_advertising: "虚假宣传",
+  abuse: "辱骂/暴恐/涉政",
+  fraud: "欺诈",
+  illicit_ads: "黑产广告",
 };
 
 const QUALITY_LABEL: Record<string, string> = {

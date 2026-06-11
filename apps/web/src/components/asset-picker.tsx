@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ImagePlus, UploadCloud } from "lucide-react";
+import { CheckCircle2, ImagePlus, ShieldAlert, ShieldCheck, UploadCloud, X } from "lucide-react";
 
 import { apiFetch } from "@bytedance-aigc/ui/lib/auth";
-import { uploadImage } from "@bytedance-aigc/ui/lib/upload-image";
+import { uploadImageWithReview } from "@bytedance-aigc/ui/lib/upload-image";
+import type { UploadReviewResult } from "@bytedance-aigc/ui/lib/upload-image";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ interface AssetItem {
   url: string;
   mime: string;
   size: number;
+  reviewStatus?: string;
   aiGenerated?: boolean;
   aiPrompt?: string;
   sceneTags?: string[];
@@ -66,10 +68,19 @@ const STOCK_LIBRARY: StockItem[] = [
   { id: "stock-5", url: "/covers/cover-5.webp", title: "夜色街道", scene: "城市", subject: "街景" },
 ];
 
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  PASSED: { label: "通过", className: "bg-emerald-500/90 text-white" },
+  WARNED: { label: "警告", className: "bg-amber-500/90 text-white" },
+  BLOCKED: { label: "拦截", className: "bg-red-500/90 text-white" },
+};
+
 export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
   const [items, setItems] = useState<AssetItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<UploadReviewResult | null>(null);
+  const [warnAsset, setWarnAsset] = useState<AssetItem | null>(null);
   const [tab, setTab] = useState("mine");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,25 +108,41 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
     setUploading(true);
+    setUploadError(null);
+    setUploadResult(null);
     try {
-      const result = await uploadImage(file);
+      const result = await uploadImageWithReview(file);
+      console.log("[素材审核]", result.reviewStatus, result.reviewMessage, result);
+      setUploadResult(result);
       await loadAssets();
-      // 上传成功后自动选中插入
-      onSelect(result.url);
-      onClose();
-    } catch {
-      // uploadImage 内部会抛出带 HTTP 状态的错误
+      if (result.reviewStatus === "PASSED") {
+        onSelect(result.image!.url);
+        onClose();
+      }
+      // WARNED/BLOCKED: 留在面板展示审核结果
+    } catch (err) {
+      console.log("[素材审核] 上传异常", err);
+      setUploadResult({
+        reviewStatus: "BLOCKED",
+        reviewMessage: err instanceof Error ? err.message : "上传失败",
+      });
     } finally {
       setUploading(false);
     }
   }
 
-  function handleStockClick(item: StockItem) {
+  function handleAssetClick(item: AssetItem) {
+    console.log("[素材点击]", item.id, "reviewStatus:", item.reviewStatus);
+    // WARNED 素材提示用户确认
+    if (item.reviewStatus === "WARNED") {
+      setWarnAsset(item);
+      return;
+    }
     onSelect(item.url);
     onClose();
   }
 
-  function handleAssetClick(item: AssetItem) {
+  function handleStockClick(item: StockItem) {
     onSelect(item.url);
     onClose();
   }
@@ -147,6 +174,34 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
           </TabsList>
 
           <TabsContent value="mine" className="mt-3 max-h-[50vh] overflow-y-auto">
+            {/* WARNED 素材确认 */}
+            {warnAsset && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />
+                <p className="flex-1 text-sm text-amber-700 dark:text-amber-300">
+                  该素材命中合规警告，确定使用吗？
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(warnAsset.url);
+                    setWarnAsset(null);
+                    onClose();
+                  }}
+                  className="px-2 py-1 rounded text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition"
+                >
+                  仍使用
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWarnAsset(null)}
+                  className="p-1 rounded hover:bg-foreground/10 transition"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+
             {loading && <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>}
             {!loading && items.length === 0 && (
               <div className="py-10 text-center text-sm text-muted-foreground">
@@ -155,23 +210,33 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
             )}
             {!loading && items.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
-                {items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleAssetClick(item)}
-                    className="rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-ring transition text-left"
-                  >
-                    <div className="aspect-square bg-muted">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.aiPrompt ?? item.key}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </button>
-                ))}
+                {items.map((item) => {
+                  const cfg = STATUS_CONFIG[item.reviewStatus ?? ""];
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleAssetClick(item)}
+                      className="rounded-md border border-border overflow-hidden hover:ring-2 hover:ring-ring transition text-left relative"
+                    >
+                      <div className="aspect-square bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.url}
+                          alt={item.aiPrompt ?? item.key}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {cfg && (
+                        <span
+                          className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${cfg.className}`}
+                        >
+                          {cfg.label}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -198,6 +263,21 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
                 支持 JPG / PNG / WebP / GIF，最大 5MB
               </span>
             </button>
+
+            {/* 上传审核结果 */}
+            {uploadResult && (
+              <ReviewBanner
+                reviewStatus={uploadResult.reviewStatus}
+                message={uploadResult.reviewMessage}
+                onConfirm={() => {
+                  if (uploadResult.image) {
+                    onSelect(uploadResult.image.url);
+                    onClose();
+                  }
+                }}
+                onDismiss={() => setUploadResult(null)}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="stock" className="mt-3 max-h-[50vh] overflow-y-auto">
@@ -226,5 +306,72 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 统一的审核结果展示条 */
+function ReviewBanner({
+  reviewStatus,
+  message,
+  onConfirm,
+  onDismiss,
+}: {
+  reviewStatus: string;
+  message: string;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  const isAllow = reviewStatus === "PASSED";
+  const isWarn = reviewStatus === "WARNED";
+  const isBlock = reviewStatus === "BLOCKED";
+
+  const icon = isAllow ? (
+    <ShieldCheck className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
+  ) : (
+    <ShieldAlert
+      className={`h-4 w-4 mt-0.5 shrink-0 ${isBlock ? "text-red-500" : "text-amber-500"}`}
+    />
+  );
+
+  const bg = isAllow
+    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900"
+    : isBlock
+      ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900"
+      : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900";
+
+  const text = isAllow
+    ? "text-emerald-700 dark:text-emerald-300"
+    : isBlock
+      ? "text-red-700 dark:text-red-300"
+      : "text-amber-700 dark:text-amber-300";
+
+  return (
+    <div className={`mt-2 flex items-start gap-2 rounded-md border px-3 py-2 ${bg}`}>
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium ${text}`}>
+          {isAllow ? "合规校验通过" : isBlock ? "素材已被拦截" : "合规警告"}
+        </p>
+        <p className={`text-xs mt-0.5 ${text} opacity-80`}>{message}</p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {isWarn && (
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-2 py-1 rounded text-xs font-medium bg-foreground/10 hover:bg-foreground/20 transition"
+          >
+            仍使用
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="p-1 rounded hover:bg-foreground/10 transition"
+        >
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
   );
 }

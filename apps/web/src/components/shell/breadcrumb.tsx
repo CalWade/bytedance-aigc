@@ -11,6 +11,8 @@ const LABELS: Record<string, string> = {
   rank: "榜单",
   hot: "热点榜",
   best: "爆文榜",
+  external: "外部",
+  douyin: "抖音热榜",
   drafts: "草稿",
   mine: "我的草稿",
   me: "工作台",
@@ -27,8 +29,15 @@ const LABELS: Record<string, string> = {
   login: "登录",
 };
 
+/** 没有对应页面的中间路径前缀 — 点击会 404，面包屑中不生成链接。 */
+const UNREACHABLE_PREFIXES = ["/drafts", "/me", "/rank", "/post", "/rank/external"];
+
 function labelOf(seg: string) {
   return LABELS[seg] ?? seg;
+}
+
+function isUnreachable(href: string) {
+  return UNREACHABLE_PREFIXES.some((p) => href === p);
 }
 
 export function Breadcrumb() {
@@ -36,13 +45,14 @@ export function Breadcrumb() {
   const segments = React.useMemo(() => pathname.split("/").filter(Boolean), [pathname]);
 
   if (segments.length === 0) {
-    return <div className="flex items-center text-[13px] text-foreground font-medium">推荐</div>;
+    return <div className="flex items-center text-[13px] text-foreground font-medium">首页</div>;
   }
 
   const crumbs = segments.map((seg, idx) => {
     const href = "/" + segments.slice(0, idx + 1).join("/");
     const isLast = idx === segments.length - 1;
-    return { seg, href, isLast };
+    const noLink = isUnreachable(href);
+    return { seg, href, isLast, noLink };
   });
 
   return (
@@ -53,8 +63,13 @@ export function Breadcrumb() {
       {crumbs.map((c) => (
         <React.Fragment key={c.href}>
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" aria-hidden />
-          {c.isLast ? (
-            <span className={cn("text-foreground font-medium truncate max-w-[200px]")}>
+          {c.isLast || c.noLink ? (
+            <span
+              className={cn(
+                "text-foreground font-medium truncate max-w-[200px]",
+                c.noLink && !c.isLast && "text-muted-foreground",
+              )}
+            >
               {labelOf(c.seg)}
             </span>
           ) : (
