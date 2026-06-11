@@ -92,38 +92,48 @@ export function CommandMenu() {
     return () => window.removeEventListener("click", onClick);
   }, []);
 
-  // "管理"分组按 role 条件加入(RBAC mini, 2026-06-11):role !== "ADMIN" 时整组不出现。
+  // 纯 admin 视图(2026-06-11):role==="ADMIN" 隐藏作者侧"工作台",只留"管理 + 阅读端 + 主题 + 账户"。
+  // 非 admin 反过来:无"管理"组,只保留"工作台"。两类身份互斥,不混合。
   const groups: CmdGroup[] = [
-    {
-      heading: "工作台",
-      items: [
-        {
-          label: "我的草稿",
-          icon: PenLine,
-          onSelect: () => go("/drafts/mine"),
-          keywords: ["draft"],
-        },
-        {
-          label: "数据面板",
-          icon: LayoutDashboard,
-          onSelect: () => go("/me/dashboard"),
-          keywords: ["dashboard", "stats"],
-        },
-        {
-          label: "我的作品",
-          icon: FileText,
-          onSelect: () => go("/me/works"),
-          keywords: ["works", "posts"],
-        },
-        {
-          label: "素材库",
-          icon: ImageIcon,
-          onSelect: () => go("/me/assets"),
-          keywords: ["assets"],
-        },
-        { label: "举报记录", icon: Flag, onSelect: () => go("/me/reports"), keywords: ["report"] },
-      ],
-    },
+    ...(isAdmin
+      ? []
+      : [
+          {
+            heading: "工作台",
+            items: [
+              {
+                label: "我的草稿",
+                icon: PenLine,
+                onSelect: () => go("/drafts/mine"),
+                keywords: ["draft"],
+              },
+              {
+                label: "数据面板",
+                icon: LayoutDashboard,
+                onSelect: () => go("/me/dashboard"),
+                keywords: ["dashboard", "stats"],
+              },
+              {
+                label: "我的作品",
+                icon: FileText,
+                onSelect: () => go("/me/works"),
+                keywords: ["works", "posts"],
+              },
+              {
+                label: "素材库",
+                icon: ImageIcon,
+                onSelect: () => go("/me/assets"),
+                keywords: ["assets"],
+              },
+              {
+                label: "举报记录",
+                icon: Flag,
+                onSelect: () => go("/me/reports"),
+                keywords: ["report"],
+              },
+            ],
+          },
+        ]),
     ...(isAdmin
       ? [
           {

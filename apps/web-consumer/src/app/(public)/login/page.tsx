@@ -96,8 +96,10 @@ export default function LoginPage() {
       const data = (await res.json()) as LoginResponse;
       setToken(data.accessToken);
       setUser(data.user);
-      // 跨 Multi-Zones 跳到 studio,必须 hard navigation(Next 官方文档要求)
-      window.location.href = "/studio/drafts/mine";
+      // 跨 Multi-Zones 跳到 studio,必须 hard navigation(Next 官方文档要求)。
+      // 按 role 分流落地页:admin 进管理后台,author 进草稿列表(身份单一,纯 admin 视图)。
+      const landing = data.user.role === "ADMIN" ? "/studio/admin" : "/studio/drafts/mine";
+      window.location.href = landing;
     } catch (err) {
       setError(err instanceof Error ? err.message : "网络错误");
     } finally {

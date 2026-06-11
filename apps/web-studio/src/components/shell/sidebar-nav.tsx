@@ -64,8 +64,10 @@ const ADMIN_GROUP: NavGroup = {
   ],
 };
 
+// admin 是平台运营角色,不是创作者:纯 admin 视图,隐藏作者侧入口。
+// 若 admin 也需要发文,后台另建 author 账号(身份单一原则)。
 function getGroups(role: "AUTHOR" | "ADMIN" | undefined): NavGroup[] {
-  return role === "ADMIN" ? [...CREATOR_GROUPS, ADMIN_GROUP] : CREATOR_GROUPS;
+  return role === "ADMIN" ? [ADMIN_GROUP] : CREATOR_GROUPS;
 }
 
 // 顶部独立分组 — 引导回阅读端,做反向闭环。
