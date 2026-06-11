@@ -50,30 +50,39 @@ export class ReviewService {
     const fullText = this.extractFullText(draft);
     const truncated = fullText.length > TRUNCATE_LIMIT;
     const text = truncated ? fullText.slice(0, TRUNCATE_LIMIT) : fullText;
-
-    const qualityPrompt = await this.prompts.findDefaultByTool("QUALITY_REVIEW");
-    const qualityMessages = [
-      { role: "system" as const, content: qualityPrompt.systemPrompt },
-      { role: "user" as const, content: text },
-    ];
+    const isShortContent = text.replace(/\s/g, "").length < 50;
 
     const t0 = Date.now();
     let guardResult: GuardResult | undefined;
     let llmRaw = "";
-    let qualityRaw = "";
     let safetyMs = 0;
     let qualityMs = 0;
+    let quality: ReviewQuality;
     try {
-      const [g, l, q] = await Promise.all([
+      const safetyTasks = [
         this.timed(() => this.guard.moderate(text, "query_security_check_pro")),
         this.timed(() => this.llmChatSafety(text, "SAFETY_REVIEW")),
-        this.timed(() => this.llm.chat(qualityMessages, { temperature: 0.4 })),
-      ]);
+      ];
+      const qualityTask: Promise<{ value: ReviewQuality; ms: number }> = isShortContent
+        ? Promise.resolve({ value: this.emptyQuality(), ms: 0 })
+        : this.timed(async () => {
+            const qualityPrompt = await this.prompts.findDefaultByTool("QUALITY_REVIEW");
+            const qualityMessages = [
+              { role: "system" as const, content: qualityPrompt.systemPrompt },
+              { role: "user" as const, content: text },
+            ];
+            const raw = await this.llm.chat(qualityMessages, { temperature: 0.4 });
+            return this.parseQuality(raw);
+          });
+      const results = await Promise.all([...safetyTasks, qualityTask]);
+      const g = results[0] as { value: GuardResult; ms: number };
+      const l = results[1] as { value: string; ms: number };
+      const q = results[2] as { value: ReviewQuality; ms: number };
       guardResult = g.value;
       safetyMs = g.ms + l.ms;
       llmRaw = l.value;
-      qualityRaw = q.value;
       qualityMs = q.ms;
+      quality = q.value;
     } catch (err) {
       this.logger.error(`preflight error: ${(err as Error).message}`, (err as Error).stack);
       throw new InternalServerErrorException("审核失败,请稍后重试");
@@ -82,7 +91,6 @@ export class ReviewService {
     const guardSafety = this.guardResultToSafety(guardResult!);
     const llmSafety = this.parseSafetyByCategories(llmRaw);
     const safety = this.mergeSafety(guardSafety, llmSafety);
-    const quality = this.parseQuality(qualityRaw);
     const recommendation = this.recommend(safety, quality);
 
     const review = await this.prisma.$transaction(async (tx) => {
@@ -475,6 +483,14 @@ export class ReviewService {
     }
     const maxScore = Math.max(0, ...dims.map((d) => d.score));
     return { overall: 100 - maxScore, dimensions: dims };
+  }
+
+  private emptyQuality(): ReviewQuality {
+    return {
+      overall: 0,
+      dimensions: QUALITY_KEYS.map((key) => ({ key, score: 0, reason: "内容不足,无法评分" })),
+      note: "正文过短或为空,跳过质量评分",
+    };
   }
 
   private parseQuality(raw: string): ReviewQuality {

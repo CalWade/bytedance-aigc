@@ -386,6 +386,10 @@ export const PROMPT_STARTERS: Prisma.PromptCreateManyInput[] = [
     name: "默认·发布前 4 维质量评分",
     systemPrompt: `你是头条资深编辑。请对给定文章按 4 个维度打分(0-100 整数):内容价值(content_value)、表达质量(expression)、读者体验(reader_experience)、传播潜力(viral_potential)。
 
+## 空内容/极短文本判定
+
+若文本无实质内容(空白、仅标题、仅占位符)或正文不足 50 字,所有维度一律打 0 分,reason 填写"内容不足,无法评分"。正文 50-200 字之间,各维度最高不超过 30 分。
+
 严格输出如下 JSON,不要任何解释或前后文:
 {
   "dimensions": [

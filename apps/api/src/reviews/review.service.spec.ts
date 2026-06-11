@@ -112,10 +112,20 @@ const LOW_QUALITY = JSON.stringify({
 function makeService(guardResult: GuardResult, qualityRaw: string, safetyRaw = SAFETY_ALL_LOW) {
   const drafts = {
     assertAuthor: jest.fn().mockResolvedValue({
-      title: "标题",
+      title: "测试文章标题",
       body: {
         type: "doc",
-        content: [{ type: "paragraph", content: [{ type: "text", text: "正文" }] }],
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "这是一篇用于单元测试的模拟文章正文内容，需要足够长的文字来确保质量评分的完整路径被正确触发和验证。",
+              },
+            ],
+          },
+        ],
       },
     }),
   } as unknown as DraftsService;
@@ -652,5 +662,58 @@ describe("mergeSafety", () => {
     expect(merged.dimensions[0].severity).toBe("high"); // pornography from Guard
     expect(merged.dimensions[3].severity).toBe("medium"); // abuse from LLM
     expect(merged.overall).toBe(15); // 100 - max(85, 60) = 15
+  });
+});
+
+describe("emptyQuality (短内容跳过 LLM 质量评分)", () => {
+  let service: ReviewService;
+
+  beforeEach(() => {
+    const mocks = {
+      drafts: {},
+      prisma: {},
+      llm: { chat: jest.fn() },
+      guard: { moderate: jest.fn() },
+      prompts: { findDefaultByTool: jest.fn() },
+      store: new StreamSessionStore(),
+      notifications: { create: jest.fn() },
+    };
+    service = new ReviewService(
+      mocks.drafts as unknown as DraftsService,
+      mocks.prisma as unknown as PrismaService,
+      mocks.llm as unknown as LlmClient,
+      mocks.guard as unknown as GuardClient,
+      mocks.prompts as unknown as PromptsService,
+      mocks.store,
+      mocks.notifications as unknown as NotificationsService,
+    );
+  });
+
+  it("emptyQuality 返回 overall=0, 各维度 score=0", () => {
+    const q = (service as any).emptyQuality() as ReviewQuality;
+    expect(q.overall).toBe(0);
+    expect(q.dimensions).toHaveLength(4);
+    for (const d of q.dimensions) {
+      expect(d.score).toBe(0);
+      expect(d.reason).toContain("内容不足");
+    }
+    expect(q.note).toContain("正文过短");
+  });
+
+  it("overall=0 时 recommend 返回 WARN (quality<60)", () => {
+    const q = (service as any).emptyQuality() as ReviewQuality;
+    const safety = {
+      overall: 100,
+      dimensions: [
+        { key: "pornography", score: 0, severity: "low", hits: [], reason: "" },
+        { key: "gambling", score: 0, severity: "low", hits: [], reason: "" },
+        { key: "drugs", score: 0, severity: "low", hits: [], reason: "" },
+        { key: "abuse", score: 0, severity: "low", hits: [], reason: "" },
+        { key: "fraud", score: 0, severity: "low", hits: [], reason: "" },
+        { key: "illicit_ads", score: 0, severity: "low", hits: [], reason: "" },
+      ],
+    };
+    const rec = (service as any).recommend(safety, q);
+    expect(rec).toBe("WARN");
   });
 });
