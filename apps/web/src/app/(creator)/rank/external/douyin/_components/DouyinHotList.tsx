@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@bytedance-aigc/ui/components/ui/badge";
 import { Button } from "@bytedance-aigc/ui/components/ui/button";
 import { Card } from "@bytedance-aigc/ui/components/ui/card";
+import { apiFetch } from "@bytedance-aigc/ui/lib/auth";
 import type { DouyinTrendingResult } from "@bytedance-aigc/ui/components/feed/external-trending-types";
 
 const LABEL_VARIANT: Record<string, "destructive" | "outline" | "secondary"> = {
@@ -15,6 +17,7 @@ const LABEL_VARIANT: Record<string, "destructive" | "outline" | "secondary"> = {
 
 export function DouyinHotList({ data }: { data: DouyinTrendingResult }) {
   const router = useRouter();
+  const [creatingTitle, setCreatingTitle] = useState<string | null>(null);
 
   if (data.items.length === 0) {
     return (
@@ -24,12 +27,26 @@ export function DouyinHotList({ data }: { data: DouyinTrendingResult }) {
     );
   }
 
-  function startCreate(title: string) {
-    const params = new URLSearchParams({
-      topic: title,
-      source: "douyin-hot",
-    });
-    router.push(`/drafts/mine?${params.toString()}`);
+  async function startCreate(title: string) {
+    if (creatingTitle) return;
+    setCreatingTitle(title);
+    try {
+      const res = await apiFetch("/drafts", {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.slice(0, 80),
+          body: { type: "doc", content: [] },
+        }),
+      });
+      if (!res.ok) return;
+      const draft = (await res.json()) as { id: string };
+      const params = new URLSearchParams({ openFast: "1", topic: title, source: "douyin-hot" });
+      router.push(`/drafts/${draft.id}?${params.toString()}`);
+    } catch {
+      // silent
+    } finally {
+      setCreatingTitle(null);
+    }
   }
 
   return (
@@ -66,9 +83,10 @@ export function DouyinHotList({ data }: { data: DouyinTrendingResult }) {
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-[12px] text-brand hover:text-brand hover:bg-brand/10"
-                    onClick={() => startCreate(item.title)}
+                    onClick={() => void startCreate(item.title)}
+                    disabled={creatingTitle === item.title}
                   >
-                    以此选题创作
+                    {creatingTitle === item.title ? "创建中…" : "以此选题创作"}
                   </Button>
                 </div>
               </div>

@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { Card } from "@bytedance-aigc/ui/components/ui/card";
 import { Skeleton } from "@bytedance-aigc/ui/components/ui/skeleton";
 import { serverFetchJson } from "@bytedance-aigc/ui/lib/server-fetch";
-import { RankTabs } from "@bytedance-aigc/ui/components/feed/RankTabs";
 import type { DouyinTrendingResult } from "@bytedance-aigc/ui/components/feed/external-trending-types";
 import { DouyinHotList } from "./_components/DouyinHotList";
 
@@ -67,7 +66,6 @@ function DouyinSkeleton() {
 export default async function RankDouyinPage() {
   return (
     <main className="max-w-[1200px] mx-auto px-5 py-5">
-      <RankTabs />
       <div className="mb-4">
         <h1 className="text-[20px] font-medium text-foreground">抖音热榜</h1>
         <p className="text-[13px] text-muted-foreground mt-0.5">
