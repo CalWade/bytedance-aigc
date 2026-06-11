@@ -52,30 +52,49 @@ export function AiBubbleMenu({ editor, onInvoke }: AiBubbleMenuProps) {
 
   useEffect(() => {
     if (!editor) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
     const update = (): void => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
       const { from, to, empty } = editor.state.selection;
       if (empty) {
         setPos(null);
         setSelectedText("");
         return;
       }
-      const text = editor.state.doc.textBetween(from, to, "\n");
-      setSelectedText(text);
-      try {
-        const start = editor.view.coordsAtPos(from);
-        const end = editor.view.coordsAtPos(to);
-        setPos({
-          top: Math.min(start.top, end.top) - 44 + window.scrollY,
-          left: (start.left + end.left) / 2 + window.scrollX,
-        });
-      } catch {
-        setPos(null);
-      }
+      // 延迟 300ms 再弹出,避免选中过程中频繁闪现
+      timer = setTimeout(() => {
+        const { from: f, to: t, empty: e } = editor.state.selection;
+        if (e) return;
+        const text = editor.state.doc.textBetween(f, t, "\n");
+        setSelectedText(text);
+        try {
+          const start = editor.view.coordsAtPos(f);
+          const end = editor.view.coordsAtPos(t);
+          // coordsAtPos 返回视口坐标,fixed 定位直接使用,不加 scroll 偏移
+          setPos({
+            top: Math.min(start.top, end.top) - 44,
+            left: (start.left + end.left) / 2,
+          });
+        } catch {
+          setPos(null);
+        }
+      }, 300);
     };
     editor.on("selectionUpdate", update);
-    editor.on("blur", () => setPos(null));
+    editor.on("blur", () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      setPos(null);
+    });
     return () => {
       editor.off("selectionUpdate", update);
+      if (timer) clearTimeout(timer);
     };
   }, [editor]);
 

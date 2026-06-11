@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
 
+strictPeerDependencies: false
 # pnpm 10 默认会因 postinstall 脚本权限弹警告。
 # ignoredBuiltDependencies = 已审核确认安全跳过的包(白名单形式登记,警告消失)。
 # - @nestjs/core: postinstall 是 opencollective 募捐提示,纯输出文字,无构建

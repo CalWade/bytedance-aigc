@@ -4,8 +4,6 @@ import { DraftVersion, Prisma, VersionKind } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreateVersionKind } from "./dto/create-version.dto";
 
-// 5 分钟节流:同一 draft 内最近一个 AUTO 在 5 分钟内则跳过新建。
-const AUTO_THROTTLE_MS = 5 * 60 * 1000;
 // 30 上限滚动:仅约束 AUTO 类型;NAMED + PUBLISHED 永不删。
 const AUTO_RETENTION_LIMIT = 30;
 // NAMED 防双击:同 draft 最近一个 NAMED 在 5 秒内则返回原版本(不重建)。
@@ -131,14 +129,6 @@ export class VersionsService {
    * 不抛错(由调用方 update 钩子 try/catch 兜底,但这里也保守)。
    */
   async snapshotAuto(draftId: string, snapshot: Prisma.JsonValue): Promise<void> {
-    const recent = await this.prisma.draftVersion.findFirst({
-      where: { draftId, kind: VersionKind.AUTO },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
-    if (recent && Date.now() - recent.createdAt.getTime() < AUTO_THROTTLE_MS) {
-      return;
-    }
     await this.prisma.draftVersion.create({
       data: {
         draftId,

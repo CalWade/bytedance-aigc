@@ -2,6 +2,7 @@
 
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { Extension } from "@tiptap/react";
@@ -9,6 +10,9 @@ import { useEffect, useMemo, useRef } from "react";
 import type { JSONContent } from "@tiptap/react";
 
 import { computeChanges, type DiffRange } from "@/lib/diff";
+
+// 与 TiptapBody 保持一致的扩展列表,确保 schema 包含 image 等自定义节点
+const DIFF_EXTENSIONS = [StarterKit, Image.configure({ inline: false })];
 
 const HIGHLIGHT_KEY = new PluginKey("version-diff-highlight");
 
@@ -44,16 +48,17 @@ interface ReadOnlyDiffEditorProps {
 }
 
 function ReadOnlyDiffEditor({ doc, ranges, highlightClass }: ReadOnlyDiffEditorProps) {
-  // 把 ranges + highlightClass 编入 key,内容/范围变了重建 editor 最简(diff 视图低频,无性能压力)。
+  // 把 doc 内容也编入 key,确保切换版本时 editor 完全重建(否则 useEditor 不会更新 content)。
   const key = useMemo(
-    () => `${highlightClass}:${ranges.length}:${ranges.map((r) => `${r.from}-${r.to}`).join(",")}`,
-    [ranges, highlightClass],
+    () =>
+      `${highlightClass}:${ranges.length}:${ranges.map((r) => `${r.from}-${r.to}`).join(",")}:${JSON.stringify(doc)}`,
+    [ranges, highlightClass, doc],
   );
   const ext = useMemo(() => buildHighlightExt(ranges, highlightClass), [ranges, highlightClass]);
 
   const editor = useEditor(
     {
-      extensions: [StarterKit, ext],
+      extensions: [...DIFF_EXTENSIONS, ext],
       content: doc,
       editable: false,
       immediatelyRender: false,
@@ -88,15 +93,10 @@ export function VersionDiff({ oldDoc, newDoc }: VersionDiffProps) {
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
 
-  // 用 useMemo 跑 diff,避免每次渲染都跑(短文 50ms 左右,长文可能 200ms+)。
+  // diff 计算不再依赖 PMNode.fromJSON,直接遍历 JSONContent 树提取文本,避免 prosemirror-model 多实例问题。
   const { deletions, insertions, error } = useMemo(() => {
     try {
-      // schema 现取自一个临时 editor — useEditor 在外层组件里已用同套 StarterKit,parseJSON 一致。
-      // 这里直接拿 PMNode + Schema 太重,改方案:延迟到 ReadOnlyDiffEditor 初始化后,
-      // 但 diff 必须在渲染前算出 ranges 才能传给 plugin。
-      // 解法:用一个临时 editor 拿 schema,跑完 diff 立即 destroy。
-      const tmp = createTempSchema();
-      const r = computeChanges(oldDoc, newDoc, tmp);
+      const r = computeChanges(oldDoc, newDoc);
       return { deletions: r.deletions, insertions: r.insertions, error: null as string | null };
     } catch (err) {
       return {
@@ -151,19 +151,4 @@ export function VersionDiff({ oldDoc, newDoc }: VersionDiffProps) {
       </div>
     </div>
   );
-}
-
-// 共用 schema:必须和 TiptapBody 用同一套 StarterKit 配置,否则 fromJSON 解析会丢节点。
-// StarterKit 只通过 editor 实例暴露 schema,这里走一次性构造拿出来后 module-level 缓存。
-let cachedSchema: import("@tiptap/pm/model").Schema | null = null;
-function createTempSchema(): import("@tiptap/pm/model").Schema {
-  if (cachedSchema) return cachedSchema;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Editor } = require("@tiptap/react") as typeof import("@tiptap/react");
-  const tmp = new Editor({
-    extensions: [StarterKit],
-  });
-  cachedSchema = tmp.schema;
-  tmp.destroy();
-  return cachedSchema;
 }
