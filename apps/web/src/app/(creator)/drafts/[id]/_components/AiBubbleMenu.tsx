@@ -106,6 +106,7 @@ export function AiBubbleMenu({ editor, onInvoke }: AiBubbleMenuProps) {
     <div
       className="fixed z-30 -translate-x-1/2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-lg p-1.5 flex items-center gap-1.5"
       style={{ top: pos.top, left: pos.left }}
+      onMouseDown={(e) => e.preventDefault()}
     >
       {GROUPS.map((g, gi) => (
         <Group key={g.name} divider={gi > 0}>
